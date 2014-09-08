@@ -57,8 +57,8 @@ Windows:  ActiveState has ppm, Cygwin and StrawBerry Perl have cpan, so use the 
 
 Installation
 ------------
-   copy the influxdb-cli.pl to a path where you will access it from, either in your search path, or at a fixed location that you will always use.
-        
+   copy the `influxdb-cli.pl` to a path where you will access it from, either in your search path, or at a fixed location that you will always use.
+
 
 Usage
 -----
@@ -85,7 +85,7 @@ Commands
 
 Commands are prefaced with a '\' character.
   
-\list {series|continuous} will list either the series in the database or the continuous queries defined in the database
+`\list {series|continuous}` will list either the series in the database or the continuous queries defined in the database
     
 > metrics> \list series
 > .-----------------------------.
@@ -114,19 +114,21 @@ Commands are prefaced with a '\' character.
 >'-----------------------------'
 
 >metrics> \list continuous
->.----------------------------------------------------------------------------------------------------------------------.
->| id | query                                                                                                           |
->+----+-----------------------------------------------------------------------------------------------------------------+
->|  1 | select mean(value) from metal.diskinfo.writekbs.sda  group by time(15s) where time > now()-1h into sda.writekbs |
->|  3 | select max(value) from metal.diskinfo.writekbs.sda  group by time(5s) into sda.max1                             |
->'----+-----------------------------------------------------------------------------------------------------------------'
+>.----------------------------------------------------------------------.
+>| id | query                                                           |
+>+----+-----------------------------------------------------------------+
+>|  1 | select mean(value) from metal.diskinfo.writekbs.sda group       |
+>|    |            by time(15s) where time > now()-1h into sda.writekbs |
+>|  3 | select max(value) from metal.diskinfo.writekbs.sda group        |
+>|    |            by time(5s) into sda.max1                            |
+>'----+-----------------------------------------------------------------'
 
-\create continuous QUERY
+`\create continuous QUERY`
 create a continuous query.  For example: 
 
     select mean(value) from metal.diskinfo.writekbs.sda group by time(15s) where time > now()-1h into sda.writekbs
   
-select QUERY
+`select QUERY`
 execute a query.  Query example:
 
     select * from metal.diskinfo.writekbs.sda limit 10
