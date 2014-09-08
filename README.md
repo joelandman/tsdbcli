@@ -8,8 +8,8 @@ Dependencies:
 -------------
 
 *  Perl 5.10 or higher
-*  several Perl modules (InfluxDB, Term::ReadLine, Term::ReadLine::Gnu, 
-   Text::ASCIITable, Getopt::Lucid, JSON::PP)
+*  several Perl modules ([InfluxDB](https://metacpan.org/pod/InfluxDB), [Term::ReadLine](https://metacpan.org/pod/Term::ReadLine), [Term::ReadLine::Gnu](https://metacpan.org/pod/Term::ReadLine::Gnu), 
+   [Text::ASCIITable](https://metacpan.org/pod/Text::ASCIITable), [Getopt::Lucid](https://metacpan.org/pod/Getopt::Lucid), [JSON::PP](https://metacpan.org/pod/JSON::PP))
 *  OS ReadLine library
     
 Installing dependencies:
