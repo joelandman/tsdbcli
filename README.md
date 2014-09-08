@@ -42,10 +42,7 @@ Some of these modules are not included in the package manager distributions, so 
 
   additional for MacOSX, assuming [homebrew](http://brew.sh/) is installed
     
-    `brew install readline
-    brew link --force readline
-    sudo cpan Term::ReadLine::Gnu
-    brew unlink readline`
+    `brew install readline ; brew link --force readline ; sudo cpan Term::ReadLine::Gnu ; brew unlink readline`
   
 * Windows:  ActiveState has ppm, Cygwin and StrawBerry Perl have cpan, so use the same approach for Linux here.
 
