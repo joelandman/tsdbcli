@@ -17,32 +17,33 @@ Installing dependencies:
 
 We will simplify this in the future with an installer, and likely snapshots of the relevant modules and dependencies, or use PAR::Dist.
 
-**  Perl:  Should be included in your distribution/OS.  If not, your options are 
-**  Linux:    Included in distribution
-**  MacOSX:   Included in distribution
-**  Windows:  ActiveState Perl (http://www.activestate.com/activeperl/downloads)
-**  StrawBerry Perl (http://strawberryperl.com/)
-**  Cygwin (https://www.cygwin.com/) and installing the Perl components
+*  Perl:  Should be included in your distribution/OS.  If not, your options are 
+*  Linux:    Included in distribution
+*  MacOSX:   Included in distribution
+*  Windows:  
+  *  [ActiveState Perl](http://www.activestate.com/activeperl/downloads)
+  *  [StrawBerry Perl](http://strawberryperl.com/)
+  *  [Cygwin](https://www.cygwin.com/) and installing the Perl components
 
 
 ### OS ReadLine library ###
 
 Should be included in your distribution/OS
-**    Linux:    Included in distribution, make sure the /readline/i packages (library/development) are installed
-**    MacOSX:   Included in distribution, make sure the /readline/i packages (library/development) are installed
-**    Windows:  Cygwin or http://gnuwin32.sourceforge.net/packages/readline.htm 
+*    Linux:    Included in distribution, make sure the /readline/i packages (library/development) are installed
+*    MacOSX:   Included in distribution, make sure the /readline/i packages (library/development) are installed
+*    Windows:  Cygwin or http://gnuwin32.sourceforge.net/packages/readline.htm 
 
 ### Perl modules ###
 Some of these modules are not included in the package manager distributions, so you will need to use CPAN to install (let it autoconfigure for you, and use the sudo mechanism)
    
-** Linux and MacOSX
+* Linux and MacOSX
     sudo cpan Term::ReadLine Term::ReadLine::Gnu \
               Text::ASCIITable Getopt::Lucid \
               JSON::PP InfluxDB
 
 
   
-  assuming homebrew for MacOSX is installed
+  assuming [homebrew](http://brew.sh/) for MacOSX is installed
   
     brew install readline
     brew link --force readline
@@ -52,9 +53,11 @@ Some of these modules are not included in the package manager distributions, so 
 Windows:  ActiveState has ppm, Cygwin and StrawBerry Perl have cpan, so use the same approach for Linux here.
 
 
-Scalable Informatics (https://scalableinformatics.com) supplies a pre-built stack with all the dependencies and Perl 5.18.2 or 5.20.0 installed on our appliances, located in the /opt/scalable/ pathway.  If you would like to be able to use this, please contact us.  We may use this path in the usage examples below.
+[Scalable Informatics](https://scalableinformatics.com) supplies a pre-built stack with all the dependencies and Perl 5.18.2 or 5.20.0 installed on our appliances, located in the /opt/scalable/ pathway.  If you would like to be able to use this, please contact us.  We may use this path in the usage examples below.
 
-Installation:   copy the influxdb-cli.pl to a path where you will access it from, either in your search path, or at a fixed location that you will always use.
+Installation
+------------
+   copy the influxdb-cli.pl to a path where you will access it from, either in your search path, or at a fixed location that you will always use.
         
 
 Usage
