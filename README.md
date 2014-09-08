@@ -37,20 +37,17 @@ Should be included in your distribution/OS
 Some of these modules are not included in the package manager distributions, so you will need to use CPAN to install (let it autoconfigure for you, and use the sudo mechanism)
    
 * Linux and MacOSX
-    sudo cpan Term::ReadLine Term::ReadLine::Gnu \
-              Text::ASCIITable Getopt::Lucid \
-              JSON::PP InfluxDB
 
+  `sudo cpan Term::ReadLine Term::ReadLine::Gnu Text::ASCIITable Getopt::Lucid JSON::PP InfluxDB`
 
-  
-  assuming [homebrew](http://brew.sh/) for MacOSX is installed
+  additional for MacOSX, assuming [homebrew](http://brew.sh/) is installed
   
     brew install readline
     brew link --force readline
     sudo cpan Term::ReadLine::Gnu
     brew unlink readline
   
-Windows:  ActiveState has ppm, Cygwin and StrawBerry Perl have cpan, so use the same approach for Linux here.
+* Windows:  ActiveState has ppm, Cygwin and StrawBerry Perl have cpan, so use the same approach for Linux here.
 
 
 [Scalable Informatics](https://scalableinformatics.com) supplies a pre-built stack with all the dependencies and Perl 5.18.2 or 5.20.0 installed on our appliances, located in the /opt/scalable/ pathway.  If you would like to be able to use this, please contact us.  We may use this path in the usage examples below.
@@ -58,6 +55,8 @@ Windows:  ActiveState has ppm, Cygwin and StrawBerry Perl have cpan, so use the 
 Installation
 ------------
    copy the `influxdb-cli.pl` to a path where you will access it from, either in your search path, or at a fixed location that you will always use.
+
+   `sudo cp influxdb-cli.pl $PATH`
 
 
 Usage
