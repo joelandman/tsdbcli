@@ -41,11 +41,11 @@ Some of these modules are not included in the package manager distributions, so 
   `sudo cpan Term::ReadLine Term::ReadLine::Gnu Text::ASCIITable Getopt::Lucid JSON::PP InfluxDB`
 
   additional for MacOSX, assuming [homebrew](http://brew.sh/) is installed
-  
-    brew install readline
+    
+    `brew install readline
     brew link --force readline
     sudo cpan Term::ReadLine::Gnu
-    brew unlink readline
+    brew unlink readline`
   
 * Windows:  ActiveState has ppm, Cygwin and StrawBerry Perl have cpan, so use the same approach for Linux here.
 
