@@ -87,41 +87,35 @@ Commands are prefaced with a '\' character.
   
 `\list {series|continuous}` will list either the series in the database or the continuous queries defined in the database
     
-> metrics> \list series
-> .-----------------------------.
-> | series name                 |
-> +-----------------------------+
->| loadavg                     |
->| metal.cpuload.avg1          |
->| metal.cpuload.avg15         |
->| metal.cpuload.avg5          |
->| metal.cputotals.idle        |
->| metal.cputotals.irq         |
->| metal.cputotals.nice        |
->| metal.cputotals.soft        |
->| metal.cputotals.steal       |
->| metal.cputotals.sys         |
->| metal.cputotals.user        |
->| metal.cputotals.wait        |
->...
->| metal.swapinfo.in           |
->| metal.swapinfo.out          |
->| metal.swapinfo.total        |
->| metal.swapinfo.used         |
->| sda.max                     |
->| sda.max1                    |
->| sda.writekbs                |
->'-----------------------------'
+>     metrics> \list series
+>     .-----------------------------.
+>     | series name                 |
+>     +-----------------------------+
+>     | loadavg                     |
+>     | metal.cpuload.avg1          |
+>     | metal.cpuload.avg15         |
+>     | metal.cpuload.avg5          |
+>     | metal.cputotals.idle        |
+>     | metal.cputotals.irq         |
+>     ...
+>     | metal.swapinfo.in           |
+>     | metal.swapinfo.out          |
+>     | metal.swapinfo.total        |
+>     | metal.swapinfo.used         |
+>     | sda.max                     |
+>     | sda.max1                    |
+>     | sda.writekbs                |
+>     '-----------------------------'
 
->metrics> \list continuous
->.----------------------------------------------------------------------.
->| id | query                                                           |
->+----+-----------------------------------------------------------------+
->|  1 | select mean(value) from metal.diskinfo.writekbs.sda group       |
->|    |            by time(15s) where time > now()-1h into sda.writekbs |
->|  3 | select max(value) from metal.diskinfo.writekbs.sda group        |
->|    |            by time(5s) into sda.max1                            |
->'----+-----------------------------------------------------------------'
+>     metrics> \list continuous
+>     .----------------------------------------------------------------------.
+>     | id | query                                                           |
+>     +----+-----------------------------------------------------------------+
+>     |  1 | select mean(value) from metal.diskinfo.writekbs.sda group       |
+>     |    |            by time(15s) where time > now()-1h into sda.writekbs |
+>     |  3 | select max(value) from metal.diskinfo.writekbs.sda group        |
+>     |    |            by time(5s) into sda.max1                            |
+>     '----+-----------------------------------------------------------------'
 
 `\create continuous QUERY`
 create a continuous query.  For example: 
@@ -157,62 +151,62 @@ continuous query example, using the previously defined continuous query:
 
     select * from sda.writekbs limit 10
 
->metrics> select * from sda.writekbs limit 10
->.-------------------------------------------------.
->|                   sda.writekbs                  |
->+------------+-----------------+------------------+
->| time       | sequence_number | mean             |
->+------------+-----------------+------------------+
->| 1408992210 |               1 |              132 |
->| 1408992195 |               1 | 144.727272727273 |
->| 1408992180 |               1 |              244 |
->| 1408992165 |               1 | 83.6363636363636 |
->| 1408992150 |               1 | 190.571428571429 |
->| 1408992135 |               1 | 32.3333333333333 |
->| 1408992120 |               1 | 59.1428571428571 |
->| 1408992105 |               1 | 107.076923076923 |
->| 1408992090 |               1 | 103.428571428571 |
->| 1408992075 |               1 | 165.666666666667 |
->'------------+-----------------+------------------'     
+>     metrics> select * from sda.writekbs limit 10
+>     .-------------------------------------------------.
+>     |                   sda.writekbs                  |
+>     +------------+-----------------+------------------+
+>     | time       | sequence_number | mean             |
+>     +------------+-----------------+------------------+
+>     | 1408992210 |               1 |              132 |
+>     | 1408992195 |               1 | 144.727272727273 |
+>     | 1408992180 |               1 |              244 |
+>     | 1408992165 |               1 | 83.6363636363636 |
+>     | 1408992150 |               1 | 190.571428571429 |
+>     | 1408992135 |               1 | 32.3333333333333 |
+>     | 1408992120 |               1 | 59.1428571428571 |
+>     | 1408992105 |               1 | 107.076923076923 |
+>     | 1408992090 |               1 | 103.428571428571 |
+>     | 1408992075 |               1 | 165.666666666667 |
+>     '------------+-----------------+------------------'     
 
-  \show query parameters
+`\show query parameters`
   shows parameters related to the queries being executed.
   
->metrics> \show query parameters
->.------------------------.
->|        Parameter       |
->+----------------+-------+
->| Parameter      | Value |
->+----------------+-------+
->| chunked        |     0 |
->| time_precision | s     |
->'----------------+-------'
+>     metrics> \show query parameters
+>     .------------------------.
+>     |        Parameter       |
+>     +----------------+-------+
+>     | Parameter      | Value |
+>     +----------------+-------+
+>     | chunked        |     0 |
+>     | time_precision | s     |
+>     '----------------+-------'
 
-\set query parameter=value
+`\set query parameter=value`
 sets a query parameter (currently broken, do not use)
 
-\set sep=X
+`\set sep=X`
 sets the csv output format seperator to the character (really string!) X
 
-\set output=FILENAME
+`\set output=FILENAME`
 sends output from queries to this filename.  It will overwrite the file.  Default output is to STDOUT
   
-\set format={ascii|csv}
+`\set format={ascii|csv}`
   sets the output format to ascii (nicely formatted ascii tables) or csv (very basic, suitable for post processing with another tool, or graphing with Gnuplot, uses the seperator defined previously, or defaults to a space).  
 
   Csv provides a minimal header with a # (pound/hash) symbol at front and a list of the columns in order they are presented.
   
-\get format
+`\get format`
   shows the current format state
 
->metrics> \get format
-># format = ascii
+>     metrics> \get format
+>     # format = ascii
    
-  \get output
+`\get output`
   shows the current output location.  - means STDOUT.
 
->metrics> \get output
-># outfile = -
+>     metrics> \get output
+>     # outfile = -
 
 
 Use case:
