@@ -24,15 +24,18 @@ use InfluxDB;
 use constant true   => (1==1);
 use constant false  => (1==0);
 
+# history file
+use constant history_file => ".ifdbcli";
+
 
 #
 my $vers    = "0.5";
 
 # variables
 my ($opt,$rc,$ix,$host,$port,$user,$pass,$db,$file,$fh,$header,$data);
-my ($debug,$verbose,$help,$hostname,$line, @_params, $_p, $_tb);
+my ($debug,$verbose,$help,$hostname,$line, @_params, $_p, $_tb,$ifdbhf);
 my (%parameters,$result,$rh,@res,$term,$version,$first,$series);
-my (@columns,$nohttp,$format,$outfile,$ofh,$kvp,$k,$v,$str);
+my (@columns,$nohttp,$format,$outfile,$ofh,$kvp,$k,$v,$str,@hist);
 
 my $count   = 1;
 my $sep     = " ";
@@ -73,6 +76,18 @@ chomp($hostname);
 
 &help()             if ($help);
 &version($vers)     if ($version);
+
+# read history file it it exists
+if (-e history_file) {
+    open($ifdbhf, "<".history_file) or next;
+    while (my $hl = <$ifdbhf>)
+     {
+       chomp $hl ;
+       eval { $term->AddHistory($line)  if (!defined($file)); }; 
+     }        
+}    
+
+
 
 ### open database connection
 $ENV{'IX_DEBUG'} = 1 if ($debug);
@@ -137,7 +152,7 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
                }
             else { $format = "ascii"; }            
         }
-        $term->AddHistory($line)  if (!defined($file));
+        eval {$term->AddHistory($line)  if (!defined($file)); } ;
         next;
     }
     
@@ -149,7 +164,7 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
         if (lc($k) =~ /format/) {
             printf STDOUT "# format = %s\n",$format;
         }
-         $term->AddHistory($line)  if (!defined($file));
+        eval { $term->AddHistory($line)  if (!defined($file)); } ;
         next;
     }
     
@@ -180,13 +195,13 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
       }
       
       
-      $term->AddHistory($line)  if (!defined($file));
+      eval { $term->AddHistory($line)  if (!defined($file)); };
       next;
     }
     
     if ($line =~ /^\\set\s+(.*?)\s+(.*?)\=(.*?)/) {
       $parameters{$1} = $2;
-      $term->AddHistory($line) if (!defined($file));
+      eval { $term->AddHistory($line) if (!defined($file)); };
       next;
     }
     
@@ -224,7 +239,7 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
             elsif ($format =~ /csv/) {
                 printf $ofh "%s\n",$str;
             }            
-            $term->AddHistory($line) if (!defined($file));    
+            eval { $term->AddHistory($line) if (!defined($file)); };    
         }
         
         if ($_arg =~ /continuous/i) {
@@ -241,7 +256,7 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
                 }
             }
             printf $ofh "%s\n",$_tb;
-            $term->AddHistory($line) if (!defined($file));    
+            eval { $term->AddHistory($line) if (!defined($file)); };
         }
         
       next;
@@ -257,7 +272,7 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
                   or warn "WARNING: " . $ix->errstr
                  };
         }
-        $term->AddHistory($line) if (!defined($file));
+        eval { $term->AddHistory($line) if (!defined($file)); };
         next;
     }
     
@@ -266,6 +281,12 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
         @res    = @{$result};
         $series = $res[0];
         
+        # if $series is not defined, then the query has returned nothing
+        # add it to history and go to next ...
+        if (!defined($series)) {
+            eval { $term->AddHistory($line) if (!defined($file)); };
+            next;
+        }
         
         
         @columns = @{$series->{columns}};
@@ -304,7 +325,10 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
         }
         
         
-        $term->AddHistory($line) if (!defined($file));
+        eval { $term->AddHistory($line) if (!defined($file)); };
+        open($ifdbhf, ">>".history_file) or next;
+        printf $ifdbhf "%s\n",$line;
+        close($ifdbhf);
         next;
     }
     
