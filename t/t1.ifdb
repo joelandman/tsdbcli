@@ -1,0 +1,3 @@
+select * from writekbs limit 10
+select * from metal.disktotals.writekbs limit 10
+\plot select * from metal.disktotals.writekbs limit 10

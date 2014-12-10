@@ -1,0 +1,2 @@
+select * from sda.writekbs limit 10
+select * from metal.disktotals.writekbs limit 10
