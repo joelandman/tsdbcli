@@ -71,7 +71,21 @@ sub _send_simple_get_query {
 		$output 	= $ret->body;
 		if ($output) {
 			eval { $res = $json->decode($output); };
-			$ret 		= { rc => $rc, result => $output};	
+			if ($res) {
+				# would be a good idea to map this to a hash
+				# data structure will be
+				#
+				# { name 		=> 'list_series_result'
+				#   column		=> @column_headers,
+				#   points		=> [  
+				#					 @point_0,@point_1,....,@point_N
+				#                  ]				
+				# }
+				# Where the @point_INDEX is an array of the columns as indicated in column_headers
+				#
+				
+			}
+			$ret 		= { rc => $rc, result => $res};	
 		  }
 		 else
 		  {
