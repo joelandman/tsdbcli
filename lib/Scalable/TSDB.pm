@@ -61,38 +61,38 @@ sub _generate_url {
 
 sub _send_simple_get_query {
 	my ($self,$query) = @_;
-	my ($ret,$rc,$output,$res);
+	my ($ret,$rc,$output,$res,$h,@cols,@points,$i,$m,$count,$return,$rary);
 	my $url 	= $self->_generate_url($query);
 	my $ua 		= Mojo::UserAgent->new;
 	my $json 	= JSON::PP->new;
 	$ret 	= $ua->get($url)->res;
 	$rc		= $ret->code;
+	$return = { rc => $rc };  # default return code
 	if (!$ret->is_empty) {
 		$output 	= $ret->body;
 		if ($output) {
 			eval { $res = $json->decode($output); };
 			if ($res) {
-				# would be a good idea to map this to a hash
-				# data structure will be
-				#
-				# { name 		=> 'list_series_result'
-				#   column		=> @column_headers,
-				#   points		=> [  
-				#					 @point_0,@point_1,....,@point_N
-				#                  ]				
-				# }
-				# Where the @point_INDEX is an array of the columns as indicated in column_headers
-				#
-				
+				# munge this horrible HoAoA into something resembling a sane data structure (HoH)
+				$rary = @{$res}[0];				
+				@cols 	= @{$rary->{columns}};
+				$m 	= $#cols;
+				@points = @{$rary->{points}};
+				$count  = 0;
+				# build a hash of hashes, indexed by a count, such that a pop(keys %$h) will give
+				# you the number of records returned
+				foreach my $point (@points) {
+					for($i=0;$i<=$m;$i++) {
+						$h->{$count}->{$cols[$i]} = @{$point}[$i];
+					}
+					$count++;
+				}				
 			}
-			$ret 		= { rc => $rc, result => $res};	
-		  }
-		 else
-		  {
-		  	$ret 		= { rc => $rc };
-		  }	
+			$return		= { rc => $rc, result => $h};	
+		  }		 
 	}
-	return $ret;
+	return $return;
 }
+
 
 1;

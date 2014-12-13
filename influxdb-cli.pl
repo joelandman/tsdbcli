@@ -45,6 +45,8 @@ my (%parameters,$result,$rh,@res,$term,$version,$first,$series);
 my (@columns,$nohttp,$format,$outfile,$ofh,$kvp,$k,$v,$str,@hist);
 my ($vals,$vstr,$cmd,$url,$hash,$json,$param,$query);
 
+my ($tsdb,$hashout);
+
 my $count   = 1;
 my $sep     = " ";
  
@@ -116,6 +118,20 @@ if ($file) {
 $parameters{'time_precision'} = 's';
 $parameters{'chunked'}        = 0;
 
+# build TSDB connection
+$tsdb = Scalable::TSDB->new(
+  {
+          host    => $host, 
+          port    => $port, 
+          db      => $db, 
+          user    => $user, 
+          pass    => $pass, 
+          ssl     => false,
+          debug   => $debug
+  }
+);
+
+
 while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) {
     
     chomp($line);
@@ -124,9 +140,7 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
       last;
     }
     
-    ### setup database url
-    $url    = &set_url  ({host=>$host, port => $port , db => $db });
-    
+    # check for parameter setting
     if ($line =~ /^\\set\s+(.*)/) {
         $kvp    = $1;
         ($k,$v) = split(/\=/,$kvp);
@@ -158,6 +172,7 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
         next;
     }
     
+    # parameter checking
     if ($line =~ /^\\get\s+(.*)/) {
         $k  = $1;
         if (lc($k) =~ /output/) {
@@ -170,7 +185,7 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
         next;
     }
     
-    
+    # query parameter showing
     if ($line =~ /^\\show\s+query\s+parameters{0,1}\s{0,}(.*?\,{0,1}){0,}/) {
       $_tb = Text::ASCIITable->new( {headingText => "Parameter"} );
       $_tb->setCols('Parameter','Value');
@@ -195,12 +210,14 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
       next;
     }
     
+    # environment parameter setting
     if ($line =~ /^\\set\s+(.*?)\s+(.*?)\=(.*?)/) {
       $parameters{$1} = $2;
       eval { $term->AddHistory($line) if (!defined($file)); };
       next;
     }
     
+    # queries
     if ($line =~ /\\list\s+(.*?)$/) {
         my $_arg = $1;
         my (@series_list,$h,%cols,$first,@a,$_series,@b);
@@ -299,30 +316,25 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
     }
     
     
-    #eval { $result = $ix->query(q => $line, %parameters) or warn "WARNING: " . $ix->errstr };
-    $result = &send_non_chunked_query(
-                {
-                  user => $user, 
-                  pass => $pass, 
-                  query => $line}
-            );
+    # do a basic GET query, return a hash-of-hashes
+    $result = $tsdb->_send_simple_get_query(query => $line);
+            
+
+
     if ($result) {
-        @res    = @{$result};
-        $series = $res[0];
-        
+        $hashout  = ( $result->{result} ? %{$result->{result} : {}};
+
         # if $series is not defined, then the query has returned nothing
-        # add it to history and go to next ...
-        if (!defined($series)) {
-            eval { $term->AddHistory($line) if (!defined($file)); };
-            next;
-        }
-        
-        if ($series->{error}) {
-            printf $ofh "ERROR:\n\tmessage\t= \'%s\'\n\tdetails\t= \'%s\'\n\n",$series->{message},$series->{error};
+        # add it to history and go to next ...    
+        eval { $term->AddHistory($line) if (!defined($file)); };
+                   
+        if ($result->{rc}) {
+            printf $ofh "ERROR:\n\trc\t= \'%s\'\n",$result->{rc};
           }
         else
           {
-            @columns = @{$series->{columns}};
+            # pull column names from the 0th hash keys
+            @columns = sort keys %{$hashout->{0}} ;
            
             
             if ($format =~ /ascii/) {
