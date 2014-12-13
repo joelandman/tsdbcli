@@ -1,0 +1,1 @@
+select * from usn-04.nettotals.kbin limit 1000

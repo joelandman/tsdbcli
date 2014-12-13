@@ -14,12 +14,12 @@ use v5.12;
 use POSIX qw[strftime];
 use IO::File;
 use URI::Escape;
-use Term::ReadLine;
+use Term::ReadLine; 
 use Text::ASCIITable;
 use JSON::PP;
 use Data::Dumper;
-use Getopt::Lucid qw( :all );
-use Mojo::UserAgent;
+use Getopt::Lucid qw( :all ) ;
+use Mojo::UserAgent ;
 use LWP::UserAgent;
 use lib "./lib";
 use Scalable::TSDB;
@@ -43,7 +43,7 @@ my ($opt,$rc,$ix,$host,$port,$user,$pass,$db,$file,$fh,$header,$data);
 my ($debug,$verbose,$help,$hostname,$line, @_params, $_p, $_tb,$ifdbhf);
 my (%parameters,$result,$rh,@res,$term,$version,$first,$series);
 my (@columns,$nohttp,$format,$outfile,$ofh,$kvp,$k,$v,$str,@hist);
-my ($vals,$vstr,$cmd,$url,$hash,$json,$param,$query);
+my ($vals,$vstr,$cmd,$url,$hash,$json,$param,$query,@usecols);
 
 my ($tsdb,$hashout);
 
@@ -221,40 +221,7 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
     if ($line =~ /\\list\s+(.*?)$/) {
         my $_arg = $1;
         my (@series_list,$h,%cols,$first,@a,$_series,@b);
-        if ($_arg =~ /series/i) {
-            $result = &send_non_chunked_query(
-                {
-                  user => $user, 
-                  pass => $pass, 
-                  query => "list series"}
-            );
-            
-            $first  = @$result[0];
-            @a      = @{$first->{columns}};
-            foreach my $i (0 .. $#a) {$cols{$a[$i]} = $i; }
-            @series_list = @{$first->{points}};
-            if ($format =~ /ascii/) {
-                $_tb = Text::ASCIITable->new();
-                $_tb->setCols('series name');
-                
-                foreach $_series ( @series_list ) {
-                    $_tb->addRow(@{$_series}[$cols{'name'}]);       
-                }    
-            }
-            elsif ($format =~ /csv/) {
-                $str    = "#series\n";
-                foreach my $_series (sort @series_list ) {
-                    $str.= sprintf("%s\n",@{$_series}[$cols{'name'}]);       
-                }  
-            }
-            if ($format =~ /ascii/) {
-                printf $ofh "%s\n",$_tb;                
-               }
-            elsif ($format =~ /csv/) {
-                printf $ofh "%s\n",$str;
-            }            
-            eval { $term->AddHistory($line) if (!defined($file)); };    
-        }
+        
         
         if ($_arg =~ /continuous/i) {
             eval {$result = $ix->list_continuous_queries() or warn "WARNING: " . $ix->errstr };            
@@ -317,49 +284,54 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
     
     
     # do a basic GET query, return a hash-of-hashes
-    $result = $tsdb->_send_simple_get_query(query => $line);
+    $result = $tsdb->_send_simple_get_query({query => $line, parameters => \%parameters});
             
 
 
     if ($result) {
-        $hashout  = ( $result->{result} ? %{$result->{result} : {}};
-
+        $hashout  =  $result->{result};
+        # ? %{$result->{result}} : {});
+        #printf "Dump: %s\n",Dumper($hashout);
         # if $series is not defined, then the query has returned nothing
         # add it to history and go to next ...    
         eval { $term->AddHistory($line) if (!defined($file)); };
                    
-        if ($result->{rc}) {
+        if ($result->{rc} !~ /200/) {
             printf $ofh "ERROR:\n\trc\t= \'%s\'\n",$result->{rc};
           }
         else
           {
             # pull column names from the 0th hash keys
             @columns = sort keys %{$hashout->{0}} ;
-           
+            my @rows = sort { $a <=> $b} keys %{$hashout};
+            my $Nrow = $#rows+1;
+            if ($line =~ /list\s+series/i) {
+            	push @usecols,'name',
+              }
+             else
+              {
+              	@usecols = grep {!/name/i} @columns; # skip name column
+              }
             
             if ($format =~ /ascii/) {
-                $_tb = Text::ASCIITable->new( {headingText => $series->{name}} );
-                $_tb->setCols( @{$series->{columns}});
+            	my $heading = sprintf "results: query = \'%s\'",$line;
+
+                $_tb = Text::ASCIITable->new( {headingText => $heading} );
+                $_tb->setCols( 'id',@usecols );
                }
             elsif ($format =~/csv/) {
-                $str = "#".join($sep,@{$series->{columns}})."\n";
+                $str = "#".join($sep,@usecols)."\n";
             }
             
             
-            foreach my $point (reverse sort @{$result}) {
+            foreach my $point (@rows) {
                 if ($format =~ /ascii/) {
-                    $_tb->addRow([$series->{points}]);   
+                    $_tb->addRow($point,map { $hashout->{$point}->{$_} } @usecols);   
                    }
                 elsif ($format =~ /csv/) {
-                    my $points = $series->{points};
-                    my @tpoints = reverse @{$points};
-                    foreach my $spoint (@tpoints){
-                            $str.= sprintf("%s\n",join($sep,@$spoint));
-                    }
-                }
-                
-                    
-                }
+                    $str.= sprintf("%s\n",join($sep,$point,map { $hashout->{$point}->{$_} } @usecols));
+                }        
+            }
             
             if ($format =~ /ascii/) {
                 printf $ofh "%s\n",$_tb;
@@ -400,54 +372,6 @@ sub set_url {
   return $url;              
 }
 
-
-sub send_non_chunked_query {
-  my $hash  = shift;  
-  my $h = {u => $hash->{user}, p => $hash->{pass} , q => $hash->{query}};
-  my ($ua,$tx,$series,$result,$rv);
-  
-  $url .= (sprintf 'u=%s',$hash->{user});
-  $url .= (sprintf '&p=%s',$hash->{pass});
-  $url .= (sprintf '&q=%s',uri_escape($hash->{query}));
-  #foreach my $p (keys %parameters) { $url .= (sprintf '&%s=%s',$p,$parameters{$p}) }
-  
-  #$ua = LWP::UserAgent->new;
-  $ua = Mojo::UserAgent->new;
-  #$tx = $ua->get($url);
-  $tx = $ua->build_tx(GET => $url);
-  my $body = '';
-  $tx->req->headers->content_length(length $body);
-  
-  # Start writing directly with a drain callback
-  my $drain;
-  $drain = sub {
-    my $content = shift;
-    my $chunk   = substr $body, 0, 1, '';
-    $drain      = undef unless length $body;
-    $content->write($chunk, $drain);
-  };
-  $tx->req->content->$drain;
-
-  # Process transaction
-  $tx = $ua->start($tx);
-  $rv = $tx->{content} if ($tx->{content});
-  if ($rv) {
-    if ($tx->{_rc} != 400) {
-      $result    = decode_json $rv if ($rv);
-     }
-    else
-     {
-      push @{$result},{ error => $tx->{content}, message => $tx->{_msg} };
-     }  
-   }
-  else
-   {
-      push @{$result},{ error => "Warning:  Empty", message => $tx->{_msg} };
-   }
-  
-   
-  return $result;              
-}
 
 sub output_results {
   my ($fh,$data) = @_;

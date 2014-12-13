@@ -19,12 +19,14 @@ sub connect_db {
 }
 
 sub _generate_url {
-	my ($self,$q)	= @_;
-	my ($url,$scheme,$destination,$query);
+	my ($self,$qh)	= @_;
+	my ($url,$scheme,$destination,$query,$q,$p);
 
-
-	$query = ($q ? uri_escape($q,'\W') : "");  
-	$query = "q=".$query;
+	# take arguments of the form query => 'query', parameters => { p1 => 'v1', p2 => 'v2', ... }
+	$q = $qh->{query} if ($qh->{query});
+	$p = $qh->{parameters} if ($qh->{parameters});
+	$query = "";
+	
 
 	# add user from object into query
 	if ($query !~ /u=.*?\&{0,1}/) {
@@ -38,6 +40,21 @@ sub _generate_url {
 		$query = (sprintf 'p=%s&',$self->pass()).$query;
 		$query =~ s/^\&//; # eliminate the ampersand at start of string if it exists
 	}
+	
+	# append parameters to query if we have them
+	if ($p) {
+		foreach my $param (sort keys %{$p}) {
+			$query .= sprintf '%s=%s&',$param,$p->{$param};
+		}
+	}
+	
+	my $dbquery = $q;
+	# force quoting of series names ... grrrr
+	$dbquery =~ s|from\s+(.*?)\s+|from \"$1\"\ |g;
+	#printf "from = %s\n",$1;
+
+	$query .= sprintf 'q=%s',uri_escape($dbquery);
+
 	printf STDERR "D[%i]  Scalable::TSDB::_generate_url; query = \'%s\'\n",$$,$query if ($self->debug());
 
 	# scheme
@@ -60,8 +77,14 @@ sub _generate_url {
 }
 
 sub _send_simple_get_query {
-	my ($self,$query) = @_;
+	my ($self,$q) = @_;
 	my ($ret,$rc,$output,$res,$h,@cols,@points,$i,$m,$count,$return,$rary);
+	my $query;
+	
+	if ($q->{query}) {
+		$query=$q;
+	}
+	
 	my $url 	= $self->_generate_url($query);
 	my $ua 		= Mojo::UserAgent->new;
 	my $json 	= JSON::PP->new;

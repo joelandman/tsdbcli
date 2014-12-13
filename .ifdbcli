@@ -1,2 +1,38 @@
 select * from sda.writekbs limit 10
 select * from metal.disktotals.writekbs limit 10
+list series
+list series
+list series
+list series
+quit
+exit
+list series
+\qiut
+list series
+list series
+list series
+list series
+list series
+list series
+select mean(value) from usn-04.nettotals.kbin group(10m) limit 1000
+select * from usn-04.nettotals.kbin limit 100
+select mean(value) from usn-04.nettotals.kbin group(10m) limit 1000
+select mean(value) from usn-04.nettotals.kbin group(10m) limit 1000
+select * from usn-04.nettotals.kbin limit 1000
+select * from usn-04.nettotals.kbin limit 1000
+select * from usn-04.nettotals.kbin limit 1000
+select * from usn-04.nettotals.kbin limit 1000
+select * from usn-04.nettotals.kbin limit 1000
+select * from usn-04.nettotals.kbin limit 1000
+select * from usn-04.nettotals.kbin limit 1000
+select * from usn-04.nettotals.kbin limit 1000
+select * from usn-04.nettotals.kbin limit 1000
+select * from usn-04.nettotals.kbin limit 1000
+select * from usn-04.nettotals.kbin limit 1000
+select * from usn-04.nettotals.kbin limit 1000
+select * from usn-04.nettotals.kbin limit 1000
+select * from usn-04.nettotals.kbin limit 1000
+select * from usn-04.nettotals.kbin limit 1000
+select * from usn-04.nettotals.kbin limit 1000
+select * from usn-04.nettotals.kbin limit 1000
+select * from usn-01.nettotals.kbout limit 100

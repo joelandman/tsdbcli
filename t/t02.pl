@@ -10,7 +10,7 @@ my ($db,$u,$r);
 
 $db = Scalable::TSDB->new(
 							{
-								host 	=> 'unison', 
+								host 	=> '192.168.101.250', 
 								port 	=> 8086, 
 								db 		=> 'unison', 
 								user 	=> 'scalable', 
@@ -20,7 +20,7 @@ $db = Scalable::TSDB->new(
 							}
 						);
 
-$r	= $db->_send_simple_get_query('list series');
+$r	= $db->_send_simple_get_query({ query => 'list series'});
 
 printf "Dumper: %s\n",Dumper($db);
 printf "r = %s\n",Dumper($r);
