@@ -20,10 +20,9 @@ use JSON::PP;
 use Data::Dumper;
 use Getopt::Lucid qw( :all ) ;
 use Mojo::UserAgent ;
-use LWP::UserAgent;
 use lib "./lib";
 use Scalable::TSDB;
- 
+use Time::HiRes qw( gettimeofday tv_interval );
 
 # from SI::Utils
 use constant true   => (1==1);
@@ -45,7 +44,7 @@ my (%parameters,$result,$rh,@res,$term,$version,$first,$series);
 my (@columns,$nohttp,$format,$outfile,$ofh,$kvp,$k,$v,$str,@hist);
 my ($vals,$vstr,$cmd,$url,$hash,$json,$param,$query,@usecols);
 
-my ($tsdb,$hashout);
+my ($tsdb,$hashout,$t0,$tf,$dt);
 
 my $count   = 1;
 my $sep     = " ";
@@ -127,9 +126,12 @@ $tsdb = Scalable::TSDB->new(
           user    => $user, 
           pass    => $pass, 
           ssl     => false,
-          debug   => $debug
+          debug   => $debug,
+          suppress_id => false,
+          suppress_seq=> false
   }
 );
+
 
 
 while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) {
@@ -147,6 +149,25 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
         
         if (lc($k) =~ /sep/) {
             $sep = $v;
+        }
+        if (lc($k) =~ /no_seq/) {
+            $tsdb->suppress_seq(1);
+            printf STDERR "D[%i] influxdb-cli.pl; suppress sequence number\n",$$ if ($debug);
+        }
+        if (lc($k) =~ /use_seq/) {
+            $tsdb->suppress_seq(0);
+            printf STDERR "D[%i] influxdb-cli.pl; do not suppress sequence number\n",$$ if ($debug);
+        }
+        if (lc($k) =~ /no_ind/) {
+            $tsdb->suppress_id(1);
+            printf STDERR "D[%i] influxdb-cli.pl; suppress index number\n",$$ if ($debug);
+        }
+        if (lc($k) =~ /use_ind/) {
+            $tsdb->suppress_id(0);
+            printf STDERR "D[%i] influxdb-cli.pl; do not suppress index number\n",$$ if ($debug);
+        }
+        if (lc($k) =~ /dump/) {
+            printf "TSDB object: %s\n",Dumper($tsdb);
         }
         if (lc($k) =~ /output/) {
             $ofh = IO::File->new();
@@ -168,6 +189,7 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
                }
             else { $format = "ascii"; }            
         }
+        
         eval {$term->AddHistory($line)  if (!defined($file)); } ;
         next;
     }
@@ -212,7 +234,7 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
     
     # environment parameter setting
     if ($line =~ /^\\set\s+(.*?)\s+(.*?)\=(.*?)/) {
-      $parameters{$1} = $2;
+      $parameters{$2} = $3;
       eval { $term->AddHistory($line) if (!defined($file)); };
       next;
     }
@@ -284,9 +306,11 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
     
     
     # do a basic GET query, return a hash-of-hashes
-    $result = $tsdb->_send_simple_get_query({query => $line, parameters => \%parameters});
-            
-
+    #$result = $tsdb->_send_simple_get_query({query => $line, parameters => \%parameters});
+    $t0     = [gettimeofday];
+    $result = $tsdb->_send_chunked_get_query({query => $line, parameters => \%parameters});
+    $dt     = tv_interval ( $t0, [gettimeofday]);       
+    printf STDERR "D[%i] influxdb-cli.pl; DB query \'%s\' took %-.6fs\n",$$,$line,$dt if ($debug);
 
     if ($result) {
         $hashout  =  $result->{result};
@@ -323,7 +347,7 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
                 $str = "#".join($sep,@usecols)."\n";
             }
             
-            
+            $t0     = [gettimeofday];
             foreach my $point (@rows) {
                 if ($format =~ /ascii/) {
                     $_tb->addRow($point,map { $hashout->{$point}->{$_} } @usecols);   
@@ -332,13 +356,20 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
                     $str.= sprintf("%s\n",join($sep,$point,map { $hashout->{$point}->{$_} } @usecols));
                 }        
             }
+            $dt     = tv_interval ( $t0, [gettimeofday]);       
+            printf STDERR "D[%i] influxdb-cli.pl; output formatting took %-.6fs\n",$$,$dt if ($debug);
             
+            
+            $t0     = [gettimeofday];
             if ($format =~ /ascii/) {
                 printf $ofh "%s\n",$_tb;
                }
             elsif ($format =~ /csv/) {
                 printf $ofh "%s\n",$str;
             }
+            $dt     = tv_interval ( $t0, [gettimeofday]);       
+            printf STDERR "D[%i] influxdb-cli.pl; outputting took %-.6fs\n",$$,$dt if ($debug);
+            
           }
         
         eval { $term->AddHistory($line) if (!defined($file)); };

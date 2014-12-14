@@ -1,1 +1,4 @@
-select * from usn-04.nettotals.kbin limit 1000
+\set no_seq
+\set no_ind
+\set dump
+select * from usn-04.nettotals.kbin limit 2
