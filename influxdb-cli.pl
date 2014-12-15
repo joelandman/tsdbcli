@@ -65,7 +65,7 @@ my @command_line_specs = (
                      );
 
 # parse all command line options
-eval { $opt = Getopt::Lucid->getopt( \@command_line_specs ) };
+$opt = Getopt::Lucid->getopt( \@command_line_specs );
 
 
 # test/set debug, verbose, etc
@@ -305,8 +305,7 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
     }
     
     
-    # do a basic GET query, return a hash-of-hashes
-    #$result = $tsdb->_send_simple_get_query({query => $line, parameters => \%parameters});
+    # do a chunked GET query, return a hash-of-hashes
     $t0     = [gettimeofday];
     $result = $tsdb->_send_chunked_get_query({query => $line, parameters => \%parameters});
     $dt     = tv_interval ( $t0, [gettimeofday]);       
@@ -325,37 +324,93 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
           }
         else
           {
-            # pull column names from the 0th hash keys
-            @columns = sort keys %{$hashout->{0}} ;
-            my @rows = sort { $a <=> $b} keys %{$hashout};
-            my $Nrow = $#rows+1;
-            if ($line =~ /list\s+series/i) {
-            	push @usecols,'name',
-              }
-             else
-              {
-              	@usecols = grep {!/name/i} @columns; # skip name column
-              }
             
+            # pull column names from the 0th hash keys
+            @columns = sort keys %{$hashout} ;
+            my @rows = sort { $a <=> $b} keys %{$hashout->{$columns[0]}};
+            my $Nrow = $#rows+1;
+
+            #if ($line =~ /list\s+series/i) {
+           ## 	push @usecols,'name',
+           #   }
+           #  else
+           #   {
+           #   	@usecols = @columns; # skip name column
+           #   }
+
+            
+
             if ($format =~ /ascii/) {
             	my $heading = sprintf "results: query = \'%s\'",$line;
 
                 $_tb = Text::ASCIITable->new( {headingText => $heading} );
-                $_tb->setCols( 'id',@usecols );
+                if ($line =~ /list\s+series/i) {
+                    $_tb->setCols( 'series');
+                  }
+                else
+                  {
+                    $_tb->setCols( 'time',@columns );
+                  }
                }
             elsif ($format =~/csv/) {
-                $str = "#".join($sep,@usecols)."\n";
+              if ($line =~ /list\s+series/i) {
+                     $str = "#series\n";
+                  }
+                else
+                  {
+                      $str = "#".join($sep,@columns)."\n";
+                  }
             }
             
+            my ($rows,@r,$lst,$id1);
+            #if ($line !~ /list\s+series/i) {
+            # now remap the hash of hashes of hashes into rows->{time}->{series} = value 
+            
+                foreach my $series (@columns) {
+                    $lst = ( $line !~ /^list/i ? 'value' : 'name' );
+                    if ($line !~ /^list/i) {
+                       foreach my $id (sort {$a <=> $b} keys %{$hashout->{$series}} )
+                            {                                
+                                $rows->{$hashout->{$series}->{$id}->{time}}->{$series} = $hashout->{$series}->{$id}->{$lst} ;
+                            }
+                        }
+                      else
+                        {
+                         foreach my $id (sort keys %{$hashout->{$series}} )
+                            {
+                                $rows->{$hashout->{$series}->{$id}->{name}} = 1 ;
+                            }   
+                        }
+                    
+                    
+                }
+            #}
+            
             $t0     = [gettimeofday];
-            foreach my $point (@rows) {
-                if ($format =~ /ascii/) {
-                    $_tb->addRow($point,map { $hashout->{$point}->{$_} } @usecols);   
-                   }
-                elsif ($format =~ /csv/) {
-                    $str.= sprintf("%s\n",join($sep,$point,map { $hashout->{$point}->{$_} } @usecols));
+            if ($line !~ /^list/i) {
+                foreach my $point (sort {$a <=> $b} keys {%{$rows}}) {
+                    if ($format =~ /ascii/) {
+                        $_tb->addRow($point,map { $rows->{$point}->{$_} } @columns);   
+                       
+                      }
+                    elsif ($format =~ /csv/) {
+                        $str.= sprintf("%s\n",join($sep,$point,map { $rows->{$point}->{$_} } @columns));
+                    }                        
                 }        
-            }
+              }
+             else
+              {
+                foreach my $point (sort keys {%{$rows}}) {
+                    if ($format =~ /ascii/) {
+                        $_tb->addRow($point);
+                      }
+                    elsif ($format =~ /csv/) {
+                        $str.= sprintf("%s\n",$point);
+                        
+                    }        
+                }
+              }
+            
             $dt     = tv_interval ( $t0, [gettimeofday]);       
             printf STDERR "D[%i] influxdb-cli.pl; output formatting took %-.6fs\n",$$,$dt if ($debug);
             

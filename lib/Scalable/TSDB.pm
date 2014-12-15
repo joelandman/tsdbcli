@@ -53,12 +53,29 @@ sub _generate_url {
 		}
 	}
 	
-	my $dbquery = $q;
+	my $dbquery;
+	my $dbq2 = $q;
+	my $next = 0;
+	my @_line2;
 	# force quoting of series names ... grrrr
-	$dbquery =~ s|from\s+(.*?)\s+|from \"$1\"\ |g;
+	my @_line = split(/\s+/,$dbq2);
+	foreach my $word (@_line) {
+		if ($next) {
+			$word = sprintf('/%s/',$word);
+			$next = 0;
+		}
+		
+		if ($word =~ /from/) {
+			$next = 1;
+		}
+		push @_line2,$word;
+	}
+	$dbquery = join(' ',@_line2);
+	#$dbquery =~ s/from\s+(\S+)\s+/from \/$1\/ /g;
 	#printf "from = %s\n",$1;
 
 	$query .= sprintf 'q=%s',uri_escape($dbquery);
+	printf STDERR "D[%i]  Scalable::TSDB::_generate_url; dbquery = \'%s\'\n",$$,$dbquery if ($self->debug());
 
 	printf STDERR "D[%i]  Scalable::TSDB::_generate_url; query = \'%s\'\n",$$,$query if ($self->debug());
 
@@ -179,29 +196,34 @@ sub _send_chunked_get_query {
 			eval { $res = $json->decode($output); };
 			if ($res) {
 				# munge this horrible HoAoA into something resembling a sane data structure (HoH)
-				$rary = @{$res}[0];				
-				@cols 	= @{$rary->{columns}};
-				$m 	= $#cols;
-				@points = @{$rary->{points}};
-				for($i=0;$i<=$m;$i++) { $tpos = $i ; last if ($cols[$i] =~ /time/) }
-				for($i=0;$i<=$m;$i++) { $spos = $i ; last if ($cols[$i] =~ /sequence_number/) }
-				
-				
-				printf STDERR "D[%i] Scalable::TSDB::_send_chunked_get_query tpos = %i\n",$$,$tpos if ($self->debug());
-				printf STDERR "D[%i] Scalable::TSDB::_send_chunked_get_query spos = %i\n",$$,$spos if ($self->debug());
-				printf STDERR "D[%i] Scalable::TSDB::_send_chunked_get_query cols = \[%s\]\n",$$,join(",",@cols) if ($self->debug());
-				$count  = 0;
-				# build a hash of hashes, indexed by a count, such that a pop(keys %$h) will give
-				# you the number of records returned
-				foreach my $point (@points) {
-					for($i=0;$i<=$m;$i++) {
-						next if ($sup_sn && ($i == $spos));
-						next if ($sup_id && ($i == $tpos));
-						$ind = ($sup_id ? @{$point}[$tpos] : $count);
-						$h->{$ind}->{$cols[$i]} = @{$point}[$i];
-					}
-					$count++;
-				}				
+				foreach my $rary (@{$res}) 
+				{
+					#$rary = @{$res}[0];				
+					@cols 	= @{$rary->{columns}};
+					$m 	= $#cols;
+					@points = @{$rary->{points}};
+					for($i=0;$i<=$m;$i++) { $tpos = $i ; last if ($cols[$i] =~ /time/) }
+					for($i=0;$i<=$m;$i++) { $spos = $i ; last if ($cols[$i] =~ /sequence_number/) }
+					
+					
+					printf STDERR "D[%i] Scalable::TSDB::_send_chunked_get_query tpos = %i\n",$$,$tpos if ($self->debug());
+					printf STDERR "D[%i] Scalable::TSDB::_send_chunked_get_query spos = %i\n",$$,$spos if ($self->debug());
+					printf STDERR "D[%i] Scalable::TSDB::_send_chunked_get_query cols = \[%s\]\n",$$,join(",",@cols) if ($self->debug());
+					$count  = 0;
+					# build a hash of hashes, indexed by series name, then count, 
+					# such that @series = keys %$h will return each series result, and
+					# pop(keys %{$h->{$series[$i]}) will give you the number of records returned
+					# per series
+					foreach my $point (@points) {
+						for($i=0;$i<=$m;$i++) {
+							next if ($sup_sn && ($i == $spos));
+							next if ($sup_id && ($i == $tpos));
+							$ind = ($sup_id ? @{$point}[$tpos] : $count);
+							$h->{$rary->{name}}->{$ind}->{$cols[$i]} = @{$point}[$i];
+						}
+						$count++;
+					}				
+				}	
 			}
 			$return		= { rc => $rc, result => $h};	
 		  }		 

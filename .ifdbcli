@@ -80,3 +80,23 @@ select * from usn-04.nettotals.kbin limit 2
 select * from usn-04.nettotals.kbin limit 2
 select * from usn-04.nettotals.kbin limit 2
 select * from usn-04.nettotals.kbin limit 2
+list series
+select * from usn-04.tcpinfo.* limit 100
+select * from usn-04.tcpinfo.* limit 100
+select * from usn-04.tcpinfo.*
+select * from usn-04.tcpinfo.* limit 100
+select * from usn-04.tcpinfo.*
+select * from usn-04.tcpinfo.* limit 10
+select * from usn-04.tcpinfo.* limit 10
+list series
+list series
+select * from usn-04.tcpinfo.* limit 10
+list series
+list series
+list series
+list series
+list series
+list series
+select * from usn-04.tcpinfo.* limit 100
+select * from usn-04.tcpinfo.* limit 100
+list series
