@@ -19,8 +19,9 @@ use Text::ASCIITable;
 use JSON::PP;
 use Data::Dumper;
 use Getopt::Lucid qw( :all ) ;
-use Mojo::UserAgent ;
-use lib "./lib";
+use FindBin;
+use lib "$FindBin::Bin/lib";
+
 use Scalable::TSDB;
 use Time::HiRes qw( gettimeofday tv_interval );
 
@@ -35,7 +36,7 @@ use constant history_file => ".ifdbcli";
 my $spark = '/opt/scalable/bin/spark';
 
 #
-my $vers    = "0.5";
+my $vers    = "0.6";
 
 # variables
 my ($opt,$rc,$ix,$host,$port,$user,$pass,$db,$file,$fh,$header,$data);
@@ -115,7 +116,7 @@ if ($file) {
 
 # loop until done
 $parameters{'time_precision'} = 's';
-$parameters{'chunked'}        = 0;
+$parameters{'chunked'}        = 1;
 
 # build TSDB connection
 $tsdb = Scalable::TSDB->new(
@@ -307,7 +308,7 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
     
     # do a chunked GET query, return a hash-of-hashes
     $t0     = [gettimeofday];
-    $result = $tsdb->_send_chunked_get_query({query => $line, parameters => \%parameters});
+    $result = $tsdb->_send_chunked_get_query_LWP({query => $line, parameters => \%parameters});
     $dt     = tv_interval ( $t0, [gettimeofday]);       
     printf STDERR "D[%i] influxdb-cli.pl; DB query \'%s\' took %-.6fs\n",$$,$line,$dt if ($debug);
 
@@ -320,7 +321,8 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
         eval { $term->AddHistory($line) if (!defined($file)); };
                    
         if ($result->{rc} !~ /200/) {
-            printf $ofh "ERROR:\n\trc\t= \'%s\'\n",$result->{rc};
+            printf $ofh "ERROR:\n\tmessage\t= \'%s\'\n\trc\t= \'%s\'\n",$result->{error},$result->{rc};
+            next;
           }
         else
           {
@@ -358,7 +360,7 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
                   }
                 else
                   {
-                      $str = "#".join($sep,@columns)."\n";
+                      $str = "#".join($sep,"time",@columns)."\n";
                   }
             }
             

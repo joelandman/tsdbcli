@@ -3,7 +3,8 @@ package Scalable::TSDB;
 use Moose;
 use URI::Escape;
 use JSON::PP;
-use Mojo::UserAgent;
+use LWP::UserAgent;
+
 use Time::HiRes qw( gettimeofday tv_interval );
 
 has 'host' => ( is => 'rw', isa => 'Str');
@@ -57,8 +58,13 @@ sub _generate_url {
 	my $dbq2 = $q;
 	my $next = 0;
 	my @_line2;
+	
+	
 	# force quoting of series names ... grrrr
 	my @_line = split(/\s+/,$dbq2);
+	if (0) {
+	    #code
+	
 	foreach my $word (@_line) {
 		if ($next) {
 			$word = sprintf('/%s/',$word);
@@ -71,6 +77,11 @@ sub _generate_url {
 		push @_line2,$word;
 	}
 	$dbquery = join(' ',@_line2);
+	}
+	else
+	{
+	    $dbquery = join(' ',@_line);
+	}
 	#$dbquery =~ s/from\s+(\S+)\s+/from \/$1\/ /g;
 	#printf "from = %s\n",$1;
 
@@ -152,7 +163,7 @@ sub _send_simple_get_query {
 	return $return;
 }
 
-sub _send_chunked_get_query {
+sub _send_chunked_get_query_LWP {
 	my ($self,$q) = @_;
 	my ($ret,$rc,$output,$res,$h,@cols,@points,$i,$m,$count,$return,$rary,$t0,$tf,$dt);
 	my ($query,$sup_sn,$sup_id,$tpos,$ind,$spos);
@@ -163,31 +174,42 @@ sub _send_chunked_get_query {
 	}
 	
 	my $url 	= $self->_generate_url($query);
-	my $ua 		= Mojo::UserAgent->new;
+	
+	 
+	my $ua 		= LWP::UserAgent->new;
+	
+	# force chunked header
+	$ua->default_header('Transfer-Encoding' => "chunked");
 	my $json 	= JSON::PP->new;
+	my $bytes_received = 0;
 	#$ret 	= $ua->get($url)->res;
 	$t0 		= [gettimeofday];
-	my $tx 		= $ua->build_tx(GET => $url);
 	$output		= "";
-	$tx->res->max_message_size(0);
-	$tx->res->content->unsubscribe('read')
-			->on(read => sub {
-  				my ($content, $bytes) = @_;
-				$tf		= [gettimeofday];
-				$dt		= tv_interval ($t0,$tf);
-				$t0		= $tf;
-  				printf STDERR "D[%i] Scalable::TSDB::_send_chunked_get_query -> reading %-.6fs \n",$$,$dt if ($self->debug()) ;
-  				$output .= $bytes;
-	});
+	# c.f.   man page for LWP::UserAgent on chunked transfer
+	$ret = $ua->request(HTTP::Request->new('GET', $url),
+		sub {
+			my($chunk, $res) = @_;
+			$tf		= [gettimeofday];
+			$dt		= tv_interval ($t0,$tf);
+			$t0		= $tf;
+  			printf STDERR "D[%i] Scalable::TSDB::_send_chunked_get_query -> reading %-.6fs \n",$$,$dt if ($self->debug()) ;
+        	
+        	$bytes_received += length($chunk);
+        	$output .= $chunk;
 
-	# Process transaction
-	$ret = $ua->start($tx);
+			});
+
+	 
 	
+	printf STDERR "D[%i] Scalable::TSDB::_send_chunked_get_query -> bytes_received = %iB \n",$$,$bytes_received if ($self->debug()) ;
+        	
+
+	$rc		= $ret->code;
+	$return 	= ($rc == 200 ? { } : { 'error' => $ret->content , 'rc' => $rc });  
 	
-	#$rc		= $ret->code;
-	$rc = 200;
 	printf STDERR "D[%i] Scalable::TSDB::_send_chunked_get_query return code = %i\n",$$,$rc if ($self->debug());
-	$return = { };  # default return code
+	printf STDERR "D[%i] Scalable::TSDB::_send_chunked_get_query error mesg  = \'%s\'\n",$$,$ret->content
+	    if ($self->debug() && $rc != 200);
 	
 	$t0		= [gettimeofday];
 	#if (!$ret->is_empty) {
@@ -232,4 +254,5 @@ sub _send_chunked_get_query {
 	printf STDERR "D[%i] Scalable::TSDB::_send_chunked_get_query -> mapping %-.6fs \n",$$,$dt if ($self->debug()) ;
 	return $return;
 }
+
 1;

@@ -8,14 +8,14 @@ Dependencies:
 -------------
 
 *  Perl 5.10 or higher
-*  several Perl modules ([InfluxDB](https://metacpan.org/pod/InfluxDB), [Term::ReadLine](https://metacpan.org/pod/Term::ReadLine), [Term::ReadLine::Gnu](https://metacpan.org/pod/Term::ReadLine::Gnu), 
+*  several Perl modules [Term::ReadLine](https://metacpan.org/pod/Term::ReadLine), [Term::ReadLine::Gnu](https://metacpan.org/pod/Term::ReadLine::Gnu), 
    [Text::ASCIITable](https://metacpan.org/pod/Text::ASCIITable), [Getopt::Lucid](https://metacpan.org/pod/Getopt::Lucid), [JSON::PP](https://metacpan.org/pod/JSON::PP))
 *  OS ReadLine library
     
 Installing dependencies:
 ------------------------
 
-We will simplify this in the future with an installer, and likely snapshots of the relevant modules and dependencies, or use PAR::Dist.
+First pass at installer.  Will check for dependencies.  
 
 *  Perl:  Should be included in your distribution/OS.  If not, your options are 
 *  Linux:    Included in distribution
@@ -35,10 +35,12 @@ Should be included in your distribution/OS
 
 ### Perl modules ###
 Some of these modules are not included in the package manager distributions, so you will need to use CPAN to install (let it autoconfigure for you, and use the sudo mechanism)
+
+by hand 
    
 * Linux and MacOSX
 
-  `sudo cpan Term::ReadLine Term::ReadLine::Gnu Text::ASCIITable Getopt::Lucid JSON::PP InfluxDB`
+  `sudo cpan Term::ReadLine Term::ReadLine::Gnu Text::ASCIITable Getopt::Lucid JSON::PP LWP::UserAgent`
 
   additional for MacOSX, assuming [homebrew](http://brew.sh/) is installed
     
@@ -46,14 +48,20 @@ Some of these modules are not included in the package manager distributions, so 
   
 * Windows:  ActiveState has ppm, Cygwin and StrawBerry Perl have cpan, so use the same approach for Linux here.
 
+Automatically
 
-[Scalable Informatics](https://scalableinformatics.com) supplies a pre-built stack with all the dependencies and Perl 5.18.2 or 5.20.0 installed on our appliances, located in the /opt/scalable/ pathway.  If you would like to be able to use this, please contact us.  We may use this path in the usage examples below.
+      make INSTPATH=/path/to/installation
+
+This will create the directory /path/to/installation if it doesn't exist.   If you don't specify INSTPATH, it will use /opt/scalable/influxdb-cli.
+
+[Scalable Informatics](https://scalableinformatics.com) supplies a pre-built stack with all the dependencies and Perl 5.18.2 or 5.20.1 installed on our appliances, located in the /opt/scalable/ pathway.  If you would like to be able to use this, please contact us.  We may use this path in the usage examples below.
 
 Installation
 ------------
-   copy the `influxdb-cli.pl` to a path where you will access it from, either in your search path, or at a fixed location that you will always use.
+   Run the installation script.  This will work on Linux and MacOSX.  $_path is the full path to where you would like to install the program.  The libraries (Scalable::TSDB) will be installed below that path in lib/Scalable.
 
-   `sudo cp influxdb-cli.pl $PATH`
+      sudo ./install.pl $_path
+
 
 
 Usage

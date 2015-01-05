@@ -1,0 +1,3 @@
+\set format=csv
+\set sep=,
+select * from metal.tcpinfo.udperrs limit 10
