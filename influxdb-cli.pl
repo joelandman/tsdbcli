@@ -89,15 +89,6 @@ chomp($hostname);
 &help()             if ($help);
 &version($vers)     if ($version);
 
-# read history file it it exists
-if (-e history_file) {
-    open($ifdbhf, "<".history_file) or next;
-    while (my $hl = <$ifdbhf>)
-     {
-       chomp $hl ;
-       eval { $term->AddHistory($line)  if (!defined($file)); }; 
-     }        
-}    
 
 
 # connect file handle to file.  Use STDIN if no --file=... has been specified
@@ -113,6 +104,19 @@ if ($file) {
   {
     $term = Term::ReadLine->new('influxdb-cli');
   }
+
+# read history file it it exists, and add it back into history
+if ((-e history_file) && (!defined($file)) ) {
+    open($ifdbhf, "<".history_file) or next;
+    while (my $hl = <$ifdbhf>)
+     {
+       chomp $hl ;
+       #eval {
+        $term->addhistory($hl);
+        #}; 
+     }        
+}    
+
 
 # loop until done
 $parameters{'time_precision'} = 's';
@@ -191,7 +195,7 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
             else { $format = "ascii"; }            
         }
         
-        eval {$term->AddHistory($line)  if (!defined($file)); } ;
+        eval {$term->addhistory($line)  if (!defined($file)); } ;
         next;
     }
     
@@ -204,7 +208,7 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
         if (lc($k) =~ /format/) {
             printf STDOUT "# format = %s\n",$format;
         }
-        eval { $term->AddHistory($line)  if (!defined($file)); } ;
+        eval { $term->addhistory($line)  if (!defined($file)); } ;
         next;
     }
     
@@ -229,14 +233,14 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
       }
       &output_results($format,$ofh,($format =~ /ascii/ ? $_tb : $str));
       
-      eval { $term->AddHistory($line)  if (!defined($file)); };
+      eval { $term->addhistory($line)  if (!defined($file)); };
       next;
     }
     
     # environment parameter setting
     if ($line =~ /^\\set\s+(.*?)\s+(.*?)\=(.*?)/) {
       $parameters{$2} = $3;
-      eval { $term->AddHistory($line) if (!defined($file)); };
+      eval { $term->addhistory($line) if (!defined($file)); };
       next;
     }
     
@@ -260,7 +264,7 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
                 }
             }
             printf $ofh "%s\n",$_tb;
-            eval { $term->AddHistory($line) if (!defined($file)); };
+            eval { $term->addhistory($line) if (!defined($file)); };
         }
         
       next;
@@ -276,7 +280,7 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
                   or warn "WARNING: " . $ix->errstr
                  };
         }
-        eval { $term->AddHistory($line) if (!defined($file)); };
+        eval { $term->addhistory($line) if (!defined($file)); };
         next;
     }
     
@@ -318,7 +322,7 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
         #printf "Dump: %s\n",Dumper($hashout);
         # if $series is not defined, then the query has returned nothing
         # add it to history and go to next ...    
-        eval { $term->AddHistory($line) if (!defined($file)); };
+        eval { $term->addhistory($line) if (!defined($file)); };
                    
         if ($result->{rc} !~ /200/) {
             printf $ofh "ERROR:\n\tmessage\t= \'%s\'\n\trc\t= \'%s\'\n",$result->{error},$result->{rc};
@@ -429,7 +433,7 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
             
           }
         
-        eval { $term->AddHistory($line) if (!defined($file)); };
+        eval { $term->addhistory($line) if (!defined($file)); };
         open($ifdbhf, ">>".history_file) or next;
         printf $ifdbhf "%s\n",$line;
         close($ifdbhf); 

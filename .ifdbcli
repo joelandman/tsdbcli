@@ -157,3 +157,7 @@ select * from metal.tcpinfo.udperrs limit 10
 select * from metal.tcpinfo.udperrs limit 10
 select * from metal.tcpinfo.udperrs limit 10
 select * from metal.tcpinfo.udperrs limit 10
+select * from /metal.tcpinfo.*/ limit 10
+select * from /metal.tcpinfo.*/ limit 10
+list series
+select * from metal.tcpinfo.udperrs limit 10
