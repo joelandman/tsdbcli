@@ -161,3 +161,12 @@ select * from /metal.tcpinfo.*/ limit 10
 select * from /metal.tcpinfo.*/ limit 10
 list series
 select * from metal.tcpinfo.udperrs limit 10
+list series
+select value/10 from /^usn-01\.diskinfo\.readkbs\.sda/ limit 10
+select value/10 from /^usn-01\.diskinfo\.readkbs\.sda/ limit 10
+select value/10 from /^usn-01\.diskinfo\.readkbs\.sda/ limit 10
+select value/10 from /^usn-01\.diskinfo\.readkbs\.sda/ limit 10
+select value from /^usn-01\.diskinfo\.readkbs\.sda/ limit 10
+select value/10 from /^usn-01\.diskinfo\.readkbs\.sda/ limit 10
+select value from /^usn-01\.diskinfo\.readkbs\.sda/ limit 10
+select value/10 from /^usn-01\.diskinfo\.readkbs\.sda/ limit 10

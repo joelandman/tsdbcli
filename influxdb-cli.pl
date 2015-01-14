@@ -318,7 +318,7 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
 
     if ($result) {
         $hashout  =  $result->{result};
-        # ? %{$result->{result}} : {});
+                
         #printf "Dump: %s\n",Dumper($hashout);
         # if $series is not defined, then the query has returned nothing
         # add it to history and go to next ...    
@@ -332,7 +332,7 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
           {
             
             # pull column names from the 0th hash keys
-            @columns = sort keys %{$hashout} ;
+            @columns = grep {!/simple/} sort keys %{$hashout} ;
             my @rows = sort { $a <=> $b} keys %{$hashout->{$columns[0]}};
             my $Nrow = $#rows+1;
 
@@ -368,41 +368,79 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
                   }
             }
             
-            my ($rows,@r,$lst,$id1);
+            my ($rows,@r,$lst,$id1,@cnames,$idq,@ids,@usecn);
             #if ($line !~ /list\s+series/i) {
-            # now remap the hash of hashes of hashes into rows->{time}->{series} = value 
+            # now remap the hash of hashes of hashes into
+            # map { rows->{time}->{series}->{$_} = value{$_} } (qw(value, expr*))
+            # that is, no matter what the return column is, regardless of if its
+            # "value", "expr*", "bite_my_shiny_metal" ... as long as it is not "time" or "sequence_number"
+            # put it into the row construct.
             
                 foreach my $series (@columns) {
-                    $lst = ( $line !~ /^list/i ? 'value' : 'name' );
-                    if ($line !~ /^list/i) {
-                       foreach my $id (sort {$a <=> $b} keys %{$hashout->{$series}} )
-                            {                                
-                                $rows->{$hashout->{$series}->{$id}->{time}}->{$series} = $hashout->{$series}->{$id}->{$lst} ;
+                    if ($hashout->{simple}) {
+                        $lst = ( $line !~ /^list/i ? 'value' : 'name' );
+                        if ($line !~ /^list/i) {
+                           foreach my $id (sort {$a <=> $b} keys %{$hashout->{$series}} )
+                                {                                
+                                    $rows->{$hashout->{$series}->{$id}->{time}}->{$series} = $hashout->{$series}->{$id}->{$lst} ;
+                                }
                             }
-                        }
-                      else
-                        {
-                         foreach my $id (sort keys %{$hashout->{$series}} )
+                          else
                             {
-                                $rows->{$hashout->{$series}->{$id}->{name}} = 1 ;
-                            }   
-                        }
-                    
+                             foreach my $id (sort keys %{$hashout->{$series}} )
+                                {
+                                    $rows->{$hashout->{$series}->{$id}->{name}} = 1 ;
+                                }   
+                            }
+                      }
+                     else
+                      {
+                        # yes, this is the more complex output routine, though one can ignore the "list series"
+                        # type results.
+                        @ids =  keys %{$hashout->{$series}};
+                        $idq = pop @ids;
+                        foreach my $_cn (sort keys %{$hashout->{$series}->{$idq}})
+                         {
+                            next if $_cn =~ /^(time|sequence_number)$/;
+                            push @cnames,$_cn;
+                         }
+                        #@cnames = grep {!/^[time,sequence_number]$/} sort keys %{$hashout->{$series}->{$idq}};
+                        foreach my $id (sort {$a <=> $b} keys %{$hashout->{$series}} )
+                                {
+                                    map {$rows->{$hashout->{$series}->{$id}->{time}}->{$series}->{$_} = $hashout->{$series}->{$id}->{$_}} @cnames;
+                                    
+                                }
+                      }
                     
                 }
             #}
             
             $t0     = [gettimeofday];
             if ($line !~ /^list/i) {
-                foreach my $point (sort {$a <=> $b} keys {%{$rows}}) {
-                    if ($format =~ /ascii/) {
-                        $_tb->addRow($point,map { $rows->{$point}->{$_} } @columns);   
-                       
+                if ($hashout->{simple}) {
+                    foreach my $point (sort {$a <=> $b} keys {%{$rows}}) {
+                        if ($format =~ /ascii/) {
+                            $_tb->addRow($point,map { $rows->{$point}->{$_} } (sort keys %{$rows->{$point}->{$_}} ));   
+                           
+                          }
+                        elsif ($format =~ /csv/) {
+                            $str.= sprintf("%s\n",join($sep,$point,map { $rows->{$point}->{$_} } sort keys %{$rows->{$point}->{$_}} ));
+                        }                        
+                    }
+                  }
+                 else
+                  {
+                    foreach my $point (sort {$a <=> $b} keys {%{$rows}}) {
+                            @cnames = sort keys %{$rows->{$point}}
+                            if ($format =~ /ascii/) {
+                                $_tb->addRow($point,map { $rows->{$point}->{$_} } (sort keys %{$rows->{$point}->{$_}} ));   
+                               
+                              }
+                            elsif ($format =~ /csv/) {
+                                $str.= sprintf("%s\n",join($sep,$point,map { $rows->{$point}->{$_} } sort keys %{$rows->{$point}->{$_}} ));
+                            }                        
                       }
-                    elsif ($format =~ /csv/) {
-                        $str.= sprintf("%s\n",join($sep,$point,map { $rows->{$point}->{$_} } @columns));
-                    }                        
-                }        
+                  }
               }
              else
               {

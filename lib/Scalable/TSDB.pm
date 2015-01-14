@@ -17,6 +17,8 @@ has 'debug'=> ( is => 'rw', isa => 'Bool');
 has 'suppress_id'=> ( is => 'rw', isa => 'Bool');
 has 'suppress_seq'=> ( is => 'rw', isa => 'Bool');
 
+use constant true 	=> (1==1);
+use constant false 	=> (1==0);
 
 
 sub connect_db {
@@ -166,7 +168,7 @@ sub _send_simple_get_query {
 sub _send_chunked_get_query_LWP {
 	my ($self,$q) = @_;
 	my ($ret,$rc,$output,$res,$h,@cols,@points,$i,$m,$count,$return,$rary,$t0,$tf,$dt);
-	my ($query,$sup_sn,$sup_id,$tpos,$ind,$spos);
+	my ($query,$sup_sn,$sup_id,$tpos,$ind,$spos,$simple);
 	$sup_sn		= $self->suppress_seq();
 	$sup_id		= $self->suppress_id();
 	if ($q->{query}) {
@@ -224,6 +226,22 @@ sub _send_chunked_get_query_LWP {
 					@cols 	= @{$rary->{columns}};
 					$m 	= $#cols;
 					@points = @{$rary->{points}};
+					
+					# determine if this a simple query returning the "value" of the series
+					# or a non-simple query returning an expression output "expr\d+".
+					# Yes, the output column naming is indeed a function of whether or
+					# not the select THING has THING as a simple series name (then use "value")
+					# or THING is an "expression" as in THING/1, in which case the output
+					# column is named "expr\d+".  
+
+					# Incredible, unbelievable, and it broke lots of my code until I
+					# traced the return values step by step.  Hopefully its the last
+					# such change without fair warning.
+										
+					$h->{simple} = ( grep {/expr/} @cols ? false : true);
+					
+					
+					
 					for($i=0;$i<=$m;$i++) { $tpos = $i ; last if ($cols[$i] =~ /time/) }
 					for($i=0;$i<=$m;$i++) { $spos = $i ; last if ($cols[$i] =~ /sequence_number/) }
 					
@@ -241,6 +259,7 @@ sub _send_chunked_get_query_LWP {
 							next if ($sup_sn && ($i == $spos));
 							next if ($sup_id && ($i == $tpos));
 							$ind = ($sup_id ? @{$point}[$tpos] : $count);
+							
 							$h->{$rary->{name}}->{$ind}->{$cols[$i]} = @{$point}[$i];
 						}
 						$count++;
