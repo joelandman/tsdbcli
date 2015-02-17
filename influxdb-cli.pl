@@ -33,7 +33,7 @@ use constant false  => (1==0);
 use constant history_file => ".ifdbcli";
 
 # spark if available
-my $spark = '/opt/scalable/bin/spark';
+my $spark = (-e '/opt/scalable/bin/spark' ? '/opt/scalable/bin/spark' : undef);
 
 #
 my $vers    = "0.6";
@@ -312,7 +312,7 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
     
     # do a chunked GET query, return a hash-of-hashes
     $t0     = [gettimeofday];
-    $result = $tsdb->_send_chunked_get_query_LWP({query => $line, parameters => \%parameters});
+    $result = $tsdb->_send_chunked_get_query_LWP_return_df({query => $line, parameters => \%parameters});
     $dt     = tv_interval ( $t0, [gettimeofday]);       
     printf STDERR "D[%i] influxdb-cli.pl; DB query \'%s\' took %-.6fs\n",$$,$line,$dt if ($debug);
 
@@ -329,22 +329,8 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
             next;
           }
         else
-          {
-            
-            # pull column names from the 0th hash keys
-            @columns = grep {!/simple/} sort keys %{$hashout} ;
-            my @rows = sort { $a <=> $b} keys %{$hashout->{$columns[0]}};
-            my $Nrow = $#rows+1;
-
-            #if ($line =~ /list\s+series/i) {
-           ## 	push @usecols,'name',
-           #   }
-           #  else
-           #   {
-           #   	@usecols = @columns; # skip name column
-           #   }
-
-            
+          {            
+            @columns = @{$hashout->{columns}} ;
 
             if ($format =~ /ascii/) {
             	my $heading = sprintf "results: query = \'%s\'",$line;
@@ -368,108 +354,50 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
                   }
             }
             
-            my ($rows,@r,$lst,$id1,@cnames,$idq,@ids,@usecn);
-            #if ($line !~ /list\s+series/i) {
-            # now remap the hash of hashes of hashes into
-            # map { rows->{time}->{series}->{$_} = value{$_} } (qw(value, expr*))
-            # that is, no matter what the return column is, regardless of if its
-            # "value", "expr*", "bite_my_shiny_metal" ... as long as it is not "time" or "sequence_number"
-            # put it into the row construct.
+            my ($rows,@r,$lst,$id1,@cnames,$idq,@ids,@usecn,@loc,$c,$point);
+            my $i = 0;
             
-                foreach my $series (@columns) {
-                    if ($hashout->{simple}) {
-                        $lst = ( $line !~ /^list/i ? 'value' : 'name' );
-                        if ($line !~ /^list/i) {
-                           foreach my $id (sort {$a <=> $b} keys %{$hashout->{$series}} )
-                                {                                
-                                    $rows->{$hashout->{$series}->{$id}->{time}}->{$series} = $hashout->{$series}->{$id}->{$lst} ;
-                                }
-                            }
-                          else
-                            {
-                             foreach my $id (sort keys %{$hashout->{$series}} )
-                                {
-                                    $rows->{$hashout->{$series}->{$id}->{name}} = 1 ;
-                                }   
-                            }
-                      }
-                     else
-                      {
-                        # yes, this is the more complex output routine, though one can ignore the "list series"
-                        # type results.
-                        @ids =  keys %{$hashout->{$series}};
-                        $idq = pop @ids;
-                        foreach my $_cn (sort keys %{$hashout->{$series}->{$idq}})
-                         {
-                            next if $_cn =~ /^(time|sequence_number)$/;
-                            push @cnames,$_cn;
-                         }
-                        #@cnames = grep {!/^[time,sequence_number]$/} sort keys %{$hashout->{$series}->{$idq}};
-                        foreach my $id (sort {$a <=> $b} keys %{$hashout->{$series}} )
-                                {
-                                    map {$rows->{$hashout->{$series}->{$id}->{time}}->{$series}->{$_} = $hashout->{$series}->{$id}->{$_}} @cnames;
-                                    
-                                }
-                      }
-                    
-                }
-            #}
+            undef @loc;
             
             $t0     = [gettimeofday];
-            if ($line !~ /^list/i) {
-                if ($hashout->{simple}) {
-                    foreach my $point (sort {$a <=> $b} keys {%{$rows}}) {
-                        if ($format =~ /ascii/) {
-                            $_tb->addRow($point,map { $rows->{$point}->{$_} } (sort keys %{$rows->{$point}->{$_}} ));   
-                           
+            @loc = @columns;
+            if ($line =~ /^list/i) {
+                undef @loc;
+                my $_c = 0;
+                foreach $c (@columns) {
+                    push @loc,$_c if ($c !~ /time/);
+                    $_c++;
+                }
+            }
+              
+            if ($hashout->{points}) {
+                foreach  $point (@{$hashout->{points}}) {
+                        if ($format =~ /ascii/) {                           
+                            $_tb->addRow(@{$point}[@loc]);                              
                           }
                         elsif ($format =~ /csv/) {
-                            $str.= sprintf("%s\n",join($sep,$point,map { $rows->{$point}->{$_} } sort keys %{$rows->{$point}->{$_}} ));
+                            $str.= sprintf("%s\n",join($sep,@{$point}[@loc]));
                         }                        
-                    }
-                  }
-                 else
-                  {
-                    foreach my $point (sort {$a <=> $b} keys {%{$rows}}) {
-                            @cnames = sort keys %{$rows->{$point}}
-                            if ($format =~ /ascii/) {
-                                $_tb->addRow($point,map { $rows->{$point}->{$_} } (sort keys %{$rows->{$point}->{$_}} ));   
-                               
-                              }
-                            elsif ($format =~ /csv/) {
-                                $str.= sprintf("%s\n",join($sep,$point,map { $rows->{$point}->{$_} } sort keys %{$rows->{$point}->{$_}} ));
-                            }                        
-                      }
-                  }
-              }
-             else
-              {
-                foreach my $point (sort keys {%{$rows}}) {
-                    if ($format =~ /ascii/) {
-                        $_tb->addRow($point);
-                      }
-                    elsif ($format =~ /csv/) {
-                        $str.= sprintf("%s\n",$point);
-                        
-                    }        
                 }
-              }
-            
-            $dt     = tv_interval ( $t0, [gettimeofday]);       
-            printf STDERR "D[%i] influxdb-cli.pl; output formatting took %-.6fs\n",$$,$dt if ($debug);
-            
-            
-            $t0     = [gettimeofday];
-            if ($format =~ /ascii/) {
-                printf $ofh "%s\n",$_tb;
-               }
-            elsif ($format =~ /csv/) {
-                printf $ofh "%s\n",$str;
             }
-            $dt     = tv_interval ( $t0, [gettimeofday]);       
-            printf STDERR "D[%i] influxdb-cli.pl; outputting took %-.6fs\n",$$,$dt if ($debug);
+                 
+        }
             
-          }
+        $dt     = tv_interval ( $t0, [gettimeofday]);       
+        printf STDERR "D[%i] influxdb-cli.pl; output formatting took %-.6fs\n",$$,$dt if ($debug);
+        
+        
+        $t0     = [gettimeofday];
+        if ($format =~ /ascii/) {
+            printf $ofh "%s\n",$_tb;
+           }
+        elsif ($format =~ /csv/) {
+            printf $ofh "%s\n",$str;
+        }
+        $dt     = tv_interval ( $t0, [gettimeofday]);       
+        printf STDERR "D[%i] influxdb-cli.pl; outputting took %-.6fs\n",$$,$dt if ($debug);
+            
+          
         
         eval { $term->addhistory($line) if (!defined($file)); };
         open($ifdbhf, ">>".history_file) or next;

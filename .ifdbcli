@@ -170,3 +170,15 @@ select value from /^usn-01\.diskinfo\.readkbs\.sda/ limit 10
 select value/10 from /^usn-01\.diskinfo\.readkbs\.sda/ limit 10
 select value from /^usn-01\.diskinfo\.readkbs\.sda/ limit 10
 select value/10 from /^usn-01\.diskinfo\.readkbs\.sda/ limit 10
+list series
+list series
+list series
+list series
+list series
+list series
+list series
+list series
+list series
+list series
+list series
+select * from /usn-ramboot.tcpinfo.tcperrs/ limit 10

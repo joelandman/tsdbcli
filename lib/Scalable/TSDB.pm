@@ -274,4 +274,86 @@ sub _send_chunked_get_query_LWP {
 	return $return;
 }
 
+sub _send_chunked_get_query_LWP_return_df {
+	my ($self,$q) = @_;
+	my ($ret,$rc,$output,$res,$h,@cols,@points,$i,$m,$count,$return,$rary,$t0,$tf,$dt);
+	my ($query,$sup_sn,$sup_id,$tpos,$ind,$spos,$simple,$df);
+	$sup_sn		= $self->suppress_seq();
+	$sup_id		= $self->suppress_id();
+	if ($q->{query}) {
+		$query=$q;
+	}
+	
+	my $url 	= $self->_generate_url($query);
+	
+	 
+	my $ua 		= LWP::UserAgent->new;
+	
+	# force chunked header
+	$ua->default_header('Transfer-Encoding' => "chunked");
+	my $json 	= JSON::PP->new;
+	my $bytes_received = 0;
+	#$ret 	= $ua->get($url)->res;
+	$t0 		= [gettimeofday];
+	$output		= "";
+	# c.f.   man page for LWP::UserAgent on chunked transfer
+	$ret = $ua->request(HTTP::Request->new('GET', $url),
+		sub {
+			my($chunk, $res) = @_;
+			$tf		= [gettimeofday];
+			$dt		= tv_interval ($t0,$tf);
+			$t0		= $tf;
+  			printf STDERR "D[%i] Scalable::TSDB::_send_chunked_get_query -> reading %-.6fs \n",$$,$dt if ($self->debug()) ;
+        	
+        	$bytes_received += length($chunk);
+        	$output .= $chunk;
+
+			});
+
+	 
+	
+	printf STDERR "D[%i] Scalable::TSDB::_send_chunked_get_query -> bytes_received = %iB \n",$$,$bytes_received if ($self->debug()) ;
+        	
+
+	$rc		= $ret->code;
+	$return 	= ($rc == 200 ? { } : { 'error' => $ret->content , 'rc' => $rc });  
+	
+	printf STDERR "D[%i] Scalable::TSDB::_send_chunked_get_query return code = %i\n",$$,$rc if ($self->debug());
+	printf STDERR "D[%i] Scalable::TSDB::_send_chunked_get_query error mesg  = \'%s\'\n",$$,$ret->content
+	    if ($self->debug() && $rc != 200);
+	
+	$t0		= [gettimeofday];
+	
+	if ($output) {
+		eval { $res = $json->decode($output); };
+		if ($res) {
+			# munge this horrible HoAoA into something
+			
+			
+			foreach my $rary (@{$res}) 
+			{
+				#$rary = @{$res}[0];				
+				@cols 	= @{$rary->{columns}};
+				$df->{columns}  = [@cols];
+				$df->{name}	= $rary->{name}; 
+				$m 	= $#cols;
+				$df->{points} = $rary->{points};
+				
+				
+				for($i=0;$i<=$m;$i++) { $tpos = $i ; last if ($cols[$i] =~ /time/) }
+				for($i=0;$i<=$m;$i++) { $spos = $i ; last if ($cols[$i] =~ /sequence_number/) }
+				
+				
+				printf STDERR "D[%i] Scalable::TSDB::_send_chunked_get_query tpos = %i\n",$$,$tpos if ($self->debug());
+				printf STDERR "D[%i] Scalable::TSDB::_send_chunked_get_query spos = %i\n",$$,$spos if ($self->debug());
+				printf STDERR "D[%i] Scalable::TSDB::_send_chunked_get_query cols = \[%s\]\n",$$,join(",",@cols) if ($self->debug());
+			}	
+		}
+		$return		= { rc => $rc, result => $df};	
+	  }		 
+	$dt		= tv_interval ($t0,[gettimeofday]);
+	printf STDERR "D[%i] Scalable::TSDB::_send_chunked_get_query -> mapping %-.6fs \n",$$,$dt if ($self->debug()) ;
+	return $return;
+}
+
 1;
