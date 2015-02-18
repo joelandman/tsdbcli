@@ -1,11 +1,7 @@
 #!/usr/bin/perl
 
 # Copyright (c) 2002-2015 Scalable Informatics
-# This is not free software, this is not freely distributable
-# software.  You may not copy this software.  You may not 
-# alter and redistribute this software.
-
-# new.pl: new.pl does this stuff
+# License:  GPL 2.0 (see the enclosed LICENSE file)
 
 use strict;
 use v5.12;
