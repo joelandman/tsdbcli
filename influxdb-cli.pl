@@ -44,6 +44,7 @@ my ($debug,$verbose,$help,$hostname,$line, @_params, $_p, $_tb,$ifdbhf);
 my (%parameters,$result,$rh,@res,$term,$version,$first,$series);
 my (@columns,$nohttp,$format,$outfile,$ofh,$kvp,$k,$v,$str,@hist);
 my ($vals,$vstr,$cmd,$url,$hash,$json,$param,$query,@usecols);
+my ($skip);
 
 my ($tsdb,$hashout,$t0,$tf,$dt);
 
@@ -142,10 +143,9 @@ $tsdb = Scalable::TSDB->new(
 while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) {
     
     chomp($line);
-
-    if (($line =~ /^\\exit/) || ($line =~ /^\\quit/) ) {
-      last;
-    }
+    $skip   = false;
+    last if (($line =~ /^\\exit/) || ($line =~ /^\\quit/) );
+    
     
     # check for parameter setting
     if ($line =~ /^\\set\s+(.*)/) {
@@ -155,26 +155,26 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
         if (lc($k) =~ /sep/) {
             $sep = $v;
         }
-        if (lc($k) =~ /no_seq/) {
+        if (lc($k) =~ /^no_seq$/) {
             $tsdb->suppress_seq(1);
             printf STDERR "D[%i] influxdb-cli.pl; suppress sequence number\n",$$ if ($debug);
         }
-        if (lc($k) =~ /use_seq/) {
+        if (lc($k) =~ /^use_seq$/) {
             $tsdb->suppress_seq(0);
             printf STDERR "D[%i] influxdb-cli.pl; do not suppress sequence number\n",$$ if ($debug);
         }
-        if (lc($k) =~ /no_ind/) {
+        if (lc($k) =~ /^no_ind$/) {
             $tsdb->suppress_id(1);
             printf STDERR "D[%i] influxdb-cli.pl; suppress index number\n",$$ if ($debug);
         }
-        if (lc($k) =~ /use_ind/) {
+        if (lc($k) =~ /^use_ind$/) {
             $tsdb->suppress_id(0);
             printf STDERR "D[%i] influxdb-cli.pl; do not suppress index number\n",$$ if ($debug);
         }
-        if (lc($k) =~ /dump/) {
+        if (lc($k) =~ /^dump$/) {
             printf "TSDB object: %s\n",Dumper($tsdb);
         }
-        if (lc($k) =~ /output/) {
+        if (lc($k) =~ /^output$/) {
             $ofh = IO::File->new();
             if (!$ofh->open("> $v")) {
                 warn "ERROR: unable to open file \'$v\' for output\n";
@@ -182,30 +182,48 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
             }
             $ofh->autoflush(true);
         }
-        if (lc($k) =~ /format/) {
-            if (lc($v) =~ /ascii/) {
+        if (lc($k) =~ /^format$/) {
+            if (lc($v) =~ /^ascii$/) {
                 $format = "ascii";
                }
-            elsif (lc($v) =~ /csv/) {
+            elsif (lc($v) =~ /^csv$/) {
                 $format = "csv";
                }
-            elsif (lc($v) =~ /gnuplot/) {
+            elsif (lc($v) =~ /^gnuplot$/) {
                 $format = "gnuplot";
                }
             else { $format = "ascii"; }            
         }
-        
-        eval {$term->addhistory($line)  if (!defined($file)); } ;
+        if (lc($k) =~ /^db$/) {
+            $db           = $v;
+        }
+        if (lc($k) =~ /^host$/) {
+            $host         = $v;
+        }
+        if (lc($k) =~ /^user$/) {
+            $user         = $v;
+            $skip         = true;
+        }
+        if (lc($k) =~ /^pass$/) {
+            $pass         = $v;
+            $skip         = true;
+        }
+        if (lc($k) =~ /^port$/) {
+            $port         = $v;
+        }
+        if (!$skip) {
+            eval {$term->addhistory($line)  if (!defined($file)); } ;
+        }
         next;
     }
     
     # parameter checking
     if ($line =~ /^\\get\s+(.*)/) {
         $k  = $1;
-        if (lc($k) =~ /output/) {
+        if (lc($k) =~ /^output$/) {
             printf STDOUT "# outfile = %s\n",$outfile;
         }
-        if (lc($k) =~ /format/) {
+        if (lc($k) =~ /^format$/) {
             printf STDOUT "# format = %s\n",$format;
         }
         eval { $term->addhistory($line)  if (!defined($file)); } ;
@@ -244,72 +262,6 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
       next;
     }
     
-    # queries
-    if ($line =~ /\\list\s+(.*?)$/) {
-        my $_arg = $1;
-        my (@series_list,$h,%cols,$first,@a,$_series,@b);
-        
-        
-        if ($_arg =~ /continuous/i) {
-            eval {$result = $ix->list_continuous_queries() or warn "WARNING: " . $ix->errstr };            
-            if ($result) {
-                $_tb = Text::ASCIITable->new();
-                $_tb->setCols('id', 'query');
-                my %h = %{@{$result}[0]};
-                my @cqueries = @{$h{points}};
-                 
-                foreach my $query (@cqueries) {
-                    my @cq = @{$query};
-                    $_tb->addRow([$cq[1],$cq[2]]);   
-                }
-            }
-            printf $ofh "%s\n",$_tb;
-            eval { $term->addhistory($line) if (!defined($file)); };
-        }
-        
-      next;
-    }
-    
-    if ($line =~ /\\create\s+(.*?)\s+(.*?)\s+name\s+as\s+(.*?)$/) {
-        my $arg     = $1;
-        my $cquery  = $2;
-        my $cq_name = $3;
-        if ($arg =~ /continuous/) {
-            eval {
-                  $result = $ix->create_continuous_query(q => $cquery , name => $cq_name) 
-                  or warn "WARNING: " . $ix->errstr
-                 };
-        }
-        eval { $term->addhistory($line) if (!defined($file)); };
-        next;
-    }
-    
-    if ($line =~ /\\plot\s+(.*)/) {
-        my $query = $1;
-        eval { $result = $ix->query(q => $line, %parameters) or warn "WARNING: " . $ix->errstr };
-        @columns = @{$series->{columns}};
-        my @sindex= sort { $columns[$a] cmp $columns[$b]} @columns;
-         
-        
-        
-        foreach my $point (reverse sort @{$result}) {
-            foreach my $col (0 .. $#columns) {
-                push @{$vals->{$columns[$col]}},@{$point}[$col];
-            }
-            foreach my $col (0 .. $#columns) {
-                $vstr   = join(" ",@{$vals->{$columns[$col]}});
-                $cmd    = sprintf "%s %s",$spark,$vstr;
-                open(my $ifh, "$cmd |");
-                my @in = split(/\n/,<$ifh>);
-                close($ifh);
-                printf $ofh "#%s\n# %s\n",$columns[$col],join("",@in);
-            }
-            
-        }
-        next;
-    }
-    
-    
     # do a chunked GET query, return a hash-of-hashes
     $t0     = [gettimeofday];
     $result = $tsdb->_send_chunked_get_query_LWP_return_df({query => $line, parameters => \%parameters});
@@ -318,8 +270,6 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
 
     if ($result) {
         $hashout  =  $result->{result};
-                
-        #printf "Dump: %s\n",Dumper($hashout);
         # if $series is not defined, then the query has returned nothing
         # add it to history and go to next ...    
         eval { $term->addhistory($line) if (!defined($file)); };
@@ -329,23 +279,22 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
             next;
           }
         else
-          {            
+          {
+            next if (!$hashout); # skip processing if the return is empty but no error message provided            
             @columns = @{$hashout->{columns}} ;
-
             if ($format =~ /ascii/) {
             	my $heading = sprintf "results: query = \'%s\'",$line;
-
                 $_tb = Text::ASCIITable->new( {headingText => $heading} );
                 if ($line =~ /list\s+series/i) {
                     $_tb->setCols( 'series');
                   }
                 else
                   {
-                    $_tb->setCols( 'time',@columns );
+                    $_tb->setCols( @columns );
                   }
                }
             elsif ($format =~/csv/) {
-              if ($line =~ /list\s+series/i) {
+              if ($line =~ /^list\s+series/i) {
                      $str = "#series\n";
                   }
                 else
@@ -354,24 +303,30 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
                   }
             }
             
-            my ($rows,@r,$lst,$id1,@cnames,$idq,@ids,@usecn,@loc,$c,$point);
-            my $i = 0;
-            
+            my ($rows,@r,$lst,$id1,@cnames,$idq,@ids,@usecn,@loc,$c,$point,@_row,$_c);
+            my $i = 0;            
             undef @loc;
             
-            $t0     = [gettimeofday];
-            @loc = @columns;
+            $t0     = [gettimeofday];          
+            $_c = 0;            
             if ($line =~ /^list/i) {
                 undef @loc;
-                my $_c = 0;
                 foreach $c (@columns) {
                     push @loc,$_c if ($c !~ /time/);
+                    $_c++;
+                }
+            }
+            else
+            {
+                foreach $c (@columns) {
+                    push @loc,$_c;
                     $_c++;
                 }
             }
               
             if ($hashout->{points}) {
                 foreach  $point (@{$hashout->{points}}) {
+                        @_row = @{$point}[@loc];
                         if ($format =~ /ascii/) {                           
                             $_tb->addRow(@{$point}[@loc]);                              
                           }
@@ -405,10 +360,7 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
         close($ifdbhf); 
         next;
     }
-    
-   
- }
-    
+}    
 
 
 

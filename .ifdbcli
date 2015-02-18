@@ -182,3 +182,14 @@ list series
 list series
 list series
 select * from /usn-ramboot.tcpinfo.tcperrs/ limit 10
+list series
+list series
+select * from /usn-ramboot.nettotals.pktout/ limit 10
+list series
+select * from /usn-ramboot.nettotals.kbin/ limit 10
+select * from /usn-ramboot.nettotals.kbin/ limit 10
+list series
+select * from /usn-ramboot.nettotals.kbin/ limit 10
+select value from /usn-ramboot.nettotals.kbin/ limit 10
+select value/1000 from /usn-ramboot.nettotals.kbin/ limit 10
+list series
