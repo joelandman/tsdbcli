@@ -19,7 +19,7 @@ install: deps
 		touch install
 
 deps:
-		$(SUDO) cpan Term::ReadLine Term::ReadLine::Gnu Text::ASCIITable Getopt::Lucid JSON::PP LWP::UserAgent
+		$(SUDO) cpan Term::ReadLine Term::ReadLine::Gnu Text::ASCIITable Getopt::Lucid JSON::PP LWP::UserAgent URI::Escape POSIX IO::File Time::HiRes
 		touch deps		
 
 

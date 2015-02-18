@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# Copyright (c) 2002-2014 Scalable Informatics
+# Copyright (c) 2002-2015 Scalable Informatics
 # This is not free software, this is not freely distributable
 # software.  You may not copy this software.  You may not 
 # alter and redistribute this software.
@@ -124,19 +124,21 @@ $parameters{'time_precision'} = 's';
 $parameters{'chunked'}        = 1;
 
 # build TSDB connection
-$tsdb = Scalable::TSDB->new(
-  {
-          host    => $host, 
-          port    => $port, 
-          db      => $db, 
-          user    => $user, 
-          pass    => $pass, 
-          ssl     => false,
-          debug   => $debug,
-          suppress_id => false,
-          suppress_seq=> false
-  }
-);
+&reopen_tsdb_connection();
+
+#$tsdb = Scalable::TSDB->new(
+#  {
+#          host    => $host, 
+#          port    => $port, 
+#          db      => $db, 
+#          user    => $user, 
+#          pass    => $pass, 
+#          ssl     => false,
+#          debug   => $debug,
+#          suppress_id => false,
+#          suppress_seq=> false
+#  }
+#);
 
 
 
@@ -196,21 +198,27 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
         }
         if (lc($k) =~ /^db$/) {
             $db           = $v;
+            &reopen_tsdb_connection();
         }
         if (lc($k) =~ /^host$/) {
             $host         = $v;
+            &reopen_tsdb_connection();
         }
         if (lc($k) =~ /^user$/) {
             $user         = $v;
             $skip         = true;
+            &reopen_tsdb_connection();
         }
         if (lc($k) =~ /^pass$/) {
             $pass         = $v;
             $skip         = true;
+            &reopen_tsdb_connection();
         }
         if (lc($k) =~ /^port$/) {
             $port         = $v;
+            &reopen_tsdb_connection();
         }
+        
         if (!$skip) {
             eval {$term->addhistory($line)  if (!defined($file)); } ;
         }
@@ -388,3 +396,19 @@ sub output_results {
   printf $fh "%s\n",$data;
 }
 
+sub reopen_tsdb_connection {
+    undef $tsdb;
+    $tsdb = Scalable::TSDB->new(
+        {
+          host    => $host, 
+          port    => $port, 
+          db      => $db, 
+          user    => $user, 
+          pass    => $pass, 
+          ssl     => false,
+          debug   => $debug,
+          suppress_id => false,
+          suppress_seq=> false
+        }
+    );
+}

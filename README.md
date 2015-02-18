@@ -7,7 +7,7 @@ InfluxDB CLI to interact with time series databases and data
 Dependencies:
 -------------
 
-*  Perl 5.10 or higher
+*  Perl 5.12 or higher
 *  several Perl modules [Term::ReadLine](https://metacpan.org/pod/Term::ReadLine), [Term::ReadLine::Gnu](https://metacpan.org/pod/Term::ReadLine::Gnu), 
    [Text::ASCIITable](https://metacpan.org/pod/Text::ASCIITable), [Getopt::Lucid](https://metacpan.org/pod/Getopt::Lucid), [JSON::PP](https://metacpan.org/pod/JSON::PP))
 *  OS ReadLine library
@@ -54,7 +54,7 @@ Automatically
 
 This will create the directory /path/to/installation if it doesn't exist.   If you don't specify INSTPATH, it will use /opt/scalable/influxdb-cli.
 
-[Scalable Informatics](https://scalableinformatics.com) supplies a pre-built stack with all the dependencies and Perl 5.18.2 or 5.20.1 installed on our appliances, located in the /opt/scalable/ pathway.  If you would like to be able to use this, please contact us.  We may use this path in the usage examples below.
+[Scalable Informatics](https://scalableinformatics.com) supplies a pre-built stack with all the dependencies and Perl 5.20.1 installed on our appliances, located in the /opt/scalable/ pathway.  If you would like to be able to use this, please contact us.  We may use this path in the usage examples below.
 
 Installation
 ------------
@@ -79,9 +79,17 @@ where Input.file.ifdb might look something like this:
 
     \set format=csv
     \set output=disk.read.data
-    select value/1000 from usn-01.disktotals.readkbs
+    select value/1000 from /usn-01.disktotals.readkbs/ limit 100
 
-In these examples, $USER is the username, $PASS is the password.
+In these examples, $USER is the username, $PASS is the password.  Note
+that the queries are converted to queries.  The InfluxDB escaping is
+not automatic, you will need to escape or quote the series names 
+properly, according to the InfluxDB developers.  
+
+Note also that the database does not currently signal 
+problems with series names in a uniform manner, so you may not get any
+rows back if you issue a query for something it interprets differently
+from what you expect.
 
 
 Commands
@@ -89,42 +97,6 @@ Commands
 
 Commands are prefaced with a '\' character.
   
-`\list {series|continuous}` will list either the series in the database or the continuous queries defined in the database
-    
->     metrics> \list series
->     .-----------------------------.
->     | series name                 |
->     +-----------------------------+
->     | loadavg                     |
->     | metal.cpuload.avg1          |
->     | metal.cpuload.avg15         |
->     | metal.cpuload.avg5          |
->     | metal.cputotals.idle        |
->     | metal.cputotals.irq         |
->     ...
->     | metal.swapinfo.in           |
->     | metal.swapinfo.out          |
->     | metal.swapinfo.total        |
->     | metal.swapinfo.used         |
->     | sda.max                     |
->     | sda.max1                    |
->     | sda.writekbs                |
->     '-----------------------------'
-
->     metrics> \list continuous
->     .----------------------------------------------------------------------.
->     | id | query                                                           |
->     +----+-----------------------------------------------------------------+
->     |  1 | select mean(value) from metal.diskinfo.writekbs.sda group       |
->     |    |            by time(15s) where time > now()-1h into sda.writekbs |
->     |  3 | select max(value) from metal.diskinfo.writekbs.sda group        |
->     |    |            by time(5s) into sda.max1                            |
->     '----+-----------------------------------------------------------------'
-
-`\create continuous QUERY`
-create a continuous query.  For example: 
-
-    select mean(value) from metal.diskinfo.writekbs.sda group by time(15s) where time > now()-1h into sda.writekbs
   
 `select QUERY`
 execute a query.  Query example:
@@ -151,7 +123,7 @@ execute a query.  Query example:
 >     | 1408992199 |               1 |     0 |
 >     '------------+-----------------+-------'
  
-continuous query example, using the previously defined continuous query:   
+continuous query example, using a previously defined continuous query:   
 
     select * from sda.writekbs limit 10
 
@@ -187,7 +159,7 @@ continuous query example, using the previously defined continuous query:
 >     '----------------+-------'
 
 `\set query parameter=value`
-sets a query parameter (currently broken, do not use)
+sets a query parameter 
 
 `\set sep=X`
 sets the csv output format seperator to the character (really string!) X
@@ -196,10 +168,24 @@ sets the csv output format seperator to the character (really string!) X
 sends output from queries to this filename.  It will overwrite the file.  Default output is to STDOUT
   
 `\set format={ascii|csv}`
-  sets the output format to ascii (nicely formatted ascii tables) or csv (very basic, suitable for post processing with another tool, or graphing with Gnuplot, uses the seperator defined previously, or defaults to a space).  
+  sets the output format to ascii (nicely formatted ascii tables) or csv (very basic, suitable for post processing with another tool, or graphing with Gnuplot, uses the seperator defined previously, or defaults to a space).   Csv provides a minimal header with a # (pound/hash) symbol at front and a list of the columns in order they are presented. 
 
-  Csv provides a minimal header with a # (pound/hash) symbol at front and a list of the columns in order they are presented.
-  
+ \set db=NAME_OF_DATABASE
+sets the name of the database to connect to on the InfluxDB instance
+
+ \set host=HOSTNAME
+sets the hostname where the InfluxDB instance is running
+
+ \set port=PORT
+sets the port number where the InfluxDB instance is running
+
+ \set user=USERNAME
+sets the username to use to connect to the InfluxDB instance.   Not stored in command history
+
+ \set pass=PASSWORD
+sets the password to use to connect to the InfluxDB instance.   Not stored in command history
+
+
 `\get format`
   shows the current format state
 
@@ -223,9 +209,12 @@ Use case:
 
 Limitations:
 
-  A number of features not yet implemented.  Continuous queries cannot be deleted (yet).  
+  A number of features not yet implemented.
 
 Bugs:
+
+  Queries from multiple sequences with regexs will fail.  Still investigating but
+it appears to be related to inconsistent regex/quoting.  
 
   ReadLine based:  
     symtom:   Can't locate object method "AddHistory" via package 
@@ -240,5 +229,9 @@ Bugs:
 
 TODO
 --------
+
+* Add query and output caching.  
+* Provide cli based data language for post query manipulation.  
+* Plotting hooks to generate visible plots
 
 Everything else

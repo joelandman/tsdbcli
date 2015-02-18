@@ -193,3 +193,8 @@ select * from /usn-ramboot.nettotals.kbin/ limit 10
 select value from /usn-ramboot.nettotals.kbin/ limit 10
 select value/1000 from /usn-ramboot.nettotals.kbin/ limit 10
 list series
+list series
+select value from /usn-ramboot.swapinfo.out/ limit 1
+list series
+list series
+list series
