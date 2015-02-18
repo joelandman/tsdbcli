@@ -122,21 +122,6 @@ $parameters{'chunked'}        = 1;
 # build TSDB connection
 &reopen_tsdb_connection();
 
-#$tsdb = Scalable::TSDB->new(
-#  {
-#          host    => $host, 
-#          port    => $port, 
-#          db      => $db, 
-#          user    => $user, 
-#          pass    => $pass, 
-#          ssl     => false,
-#          debug   => $debug,
-#          suppress_id => false,
-#          suppress_seq=> false
-#  }
-#);
-
-
 
 while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) {
     
@@ -149,8 +134,12 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
     if ($line =~ /^\\set\s+(.*)/) {
         $kvp    = $1;
         ($k,$v) = split(/\=/,$kvp);
-        
-        if (lc($k) =~ /sep/) {
+
+	if (lc($k) =~ /^debug$/) {
+            $debug = ( $v =~ /^true$/ ? true : false) ;
+	    $tsdb->debug($debug);
+        }        
+        if (lc($k) =~ /^sep$/) {
             $sep = $v;
         }
         if (lc($k) =~ /^no_seq$/) {
