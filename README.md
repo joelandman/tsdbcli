@@ -9,7 +9,8 @@ Dependencies:
 
 *  Perl 5.12 or higher
 *  several Perl modules [Term::ReadLine](https://metacpan.org/pod/Term::ReadLine), [Term::ReadLine::Gnu](https://metacpan.org/pod/Term::ReadLine::Gnu), 
-   [Text::ASCIITable](https://metacpan.org/pod/Text::ASCIITable), [Getopt::Lucid](https://metacpan.org/pod/Getopt::Lucid), [JSON::PP](https://metacpan.org/pod/JSON::PP))
+   [Text::ASCIITable](https://metacpan.org/pod/Text::ASCIITable), [Getopt::Lucid](https://metacpan.org/pod/Getopt::Lucid), [JSON::PP](https://metacpan.org/pod/JSON::PP)),
+   [Moose](https://metacpan.org/pod/Moose), [List::MoreUtils](https://metacpan.org/pod/List::MoreUtils)
 *  OS ReadLine library
     
 Installing dependencies:
@@ -40,11 +41,15 @@ by hand
    
 * Linux and MacOSX
 
-  `sudo cpan Term::ReadLine Term::ReadLine::Gnu Text::ASCIITable Getopt::Lucid JSON::PP LWP::UserAgent`
+  `sudo cpan Term::ReadLine Term::ReadLine::Gnu Text::ASCIITable \
+	Getopt::Lucid JSON::PP LWP::UserAgent`Moose List::MoreUtils
 
   additional for MacOSX, assuming [homebrew](http://brew.sh/) is installed
     
-    `brew install readline ; brew link --force readline ; sudo cpan Term::ReadLine::Gnu ; brew unlink readline`
+    `brew install readline ; \
+     brew link --force readline ; \
+     sudo cpan Term::ReadLine::Gnu ; \
+     brew unlink readline`
   
 * Windows:  ActiveState has ppm, Cygwin and StrawBerry Perl have cpan, so use the same approach for Linux here.
 
