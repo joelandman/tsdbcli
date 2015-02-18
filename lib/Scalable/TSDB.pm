@@ -4,7 +4,7 @@ use Moose;
 use URI::Escape;
 use JSON::PP;
 use LWP::UserAgent;
-
+use List::MoreUtils qw(first_index);
 use Time::HiRes qw( gettimeofday tv_interval );
 
 has 'host' => ( is => 'rw', isa => 'Str');
@@ -168,8 +168,9 @@ sub _send_simple_get_query {
 
 sub _send_chunked_get_query_LWP_return_df {
 	my ($self,$q) = @_;
-	my ($ret,$rc,$output,$res,$h,@cols,@points,$i,$m,$count,$return,$rary,$t0,$tf,$dt);
-	my ($query,$sup_sn,$sup_id,$tpos,$ind,$spos,$simple,$df);
+	my ($ret,$rc,$output,$res,$h,@cols,@points,$i,$m,$count,$return,$rary);
+	my (%allc,$t0,$tf,$dt,$pt,@pts,$offset);
+	my ($query,$sup_sn,$sup_id,$tpos,$ind,$spos,$simple,$df,$idx,@appendc);
 	$sup_sn		= $self->suppress_seq();
 	$sup_id		= $self->suppress_id();
 	if ($q->{query}) {
@@ -221,26 +222,58 @@ sub _send_chunked_get_query_LWP_return_df {
 		if ($res) {
 			# munge this horrible HoAoA into something
 			
-			
+			my $_c = 0;
 			foreach my $rary (@{$res}) 
 			{
-				#$rary = @{$res}[0];				
 				@cols 	= @{$rary->{columns}};
-				$df->{columns}  = [@cols];
-				$df->{name}	= $rary->{name}; 
-				$m 	= $#cols;
-				$df->{points} = $rary->{points};
+				if ($_c == 0) {
+					# first (and possibly only return data).
+					# Alter the "value" column to be the
+					# seqeuence name
+					$idx = first_index { /value/ } @cols;
+					$cols[$idx] = $rary->{name} if ($idx > -1);
+					$df->{columns}  = [@cols];
+					push @{$df->{name}},$rary->{name}; 
+					$m 	= $#cols;
+					#$df->{points} = $rary->{points};
+					@pts = @{$rary->{points}};
+					$_c++;
+				   }
+				 else {
+					# additional data
+					# Alter the "value" column to be the
+					# seqeuence name
+					$idx = first_index { /value/ } @cols;
+					$cols[$idx] = $rary->{name} if ($idx > -1);
+					
+					# append columns that are not time/sequence number to the dataframe columns
+					undef @appendc;
+					undef %allc;
+					my $_d = 0;
+					foreach my $c (@cols) {
+						$allc{$c} = $_d;
+						push @appendc,$_d if ($c !~ /^(time|sequence_number)$/);
+						$_d++;
+					}
+					push @{$df->{columns}},@cols[@appendc];
+					
+					# calculate the offset between the lists, if it returns offset times ...
+					$offset= @{$pts[0]}[0] - @{@{$rary->{points}}[0]}[0];
+					
+					# now push these points (non time/sequence_number) to the end of the point list
+					my $Npts = $#pts+1;
+					for (my $i=0;$i<$Npts;$i++) {
+						push @{$pts[$i]},@{@{$rary->{points}}[$i]}[@appendc];
+					}
+					
+				}
+				  
 				
-				
-				for($i=0;$i<=$m;$i++) { $tpos = $i ; last if ($cols[$i] =~ /time/) }
-				for($i=0;$i<=$m;$i++) { $spos = $i ; last if ($cols[$i] =~ /sequence_number/) }
-				
-				
-				printf STDERR "D[%i] Scalable::TSDB::_send_chunked_get_query tpos = %i\n",$$,$tpos if ($self->debug());
-				printf STDERR "D[%i] Scalable::TSDB::_send_chunked_get_query spos = %i\n",$$,$spos if ($self->debug());
+							
 				printf STDERR "D[%i] Scalable::TSDB::_send_chunked_get_query cols = \[%s\]\n",$$,join(",",@cols) if ($self->debug());
 			}	
 		}
+		$df->{points} = \@pts;
 		$return		= { rc => $rc, result => $df};	
 	  }		 
 	$dt		= tv_interval ($t0,[gettimeofday]);

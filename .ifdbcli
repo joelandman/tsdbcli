@@ -198,3 +198,8 @@ select value from /usn-ramboot.swapinfo.out/ limit 1
 list series
 list series
 list series
+list series
+select * from "usn-ramboot.tcpinfo.icmperrs","usn-ramboot.tcpinfo.tcperrs" limit 10
+select * from "usn-ramboot.tcpinfo.icmperrs","usn-ramboot.tcpinfo.tcperrs" limit 10
+select * from "usn-ramboot.tcpinfo.icmperrs","usn-ramboot.tcpinfo.tcperrs" limit 10
+select * from "usn-ramboot.tcpinfo.icmperrs","usn-ramboot.tcpinfo.tcperrs" limit 10
