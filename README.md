@@ -150,6 +150,41 @@ continuous query example, using a previously defined continuous query:
 >     | 1408992075 |               1 | 165.666666666667 |
 >     '------------+-----------------+------------------'     
 
+`\match regex`
+  shows the series names that will match the regex.  For example:
+
+>	unison> \match MB
+>	.------------------------------.
+>	| results: query = '\match MB' |
+>	+------------------------------+
+>	| series                       |
+>	+------------------------------+
+>	| unison.sicloud.read.MBps     |
+>	| unison.sicloud.read_MBps     |
+>	| unison.sicloud.write.MBps    |
+>	| unison.sicloud.write_MBps    |
+>	'------------------------------'
+
+    unison> \match usn-(\d+).(.*?)disktot(.*?).(read|write)kbs
+    .-----------------------------------------------------------------------.
+    | results: query = '\match usn-(\d+).(.*?)disktot(.*?).(read|write)kbs' |
+    +-----------------------------------------------------------------------+
+    | series                                                                |
+    +-----------------------------------------------------------------------+
+    | usn-01-1g.disktotals.readkbs                                          |
+    | usn-01-1g.disktotals.writekbs                                         |
+    | usn-02-1g.disktotals.readkbs                                          |
+    | usn-02-1g.disktotals.writekbs                                         |
+    | usn-03-1g.disktotals.readkbs                                          |
+    | usn-03-1g.disktotals.writekbs                                         |
+    | usn-03.disktotals.readkbs                                             |
+    | usn-03.disktotals.writekbs                                            |
+    '-----------------------------------------------------------------------'
+
+  This is syntactic sugar to some degree, but if you have thousands of 
+  series, it is very much needed.
+
+
 `\show query parameters`
   shows parameters related to the queries being executed.
   
@@ -175,19 +210,19 @@ sends output from queries to this filename.  It will overwrite the file.  Defaul
 `\set format={ascii|csv}`
   sets the output format to ascii (nicely formatted ascii tables) or csv (very basic, suitable for post processing with another tool, or graphing with Gnuplot, uses the seperator defined previously, or defaults to a space).   Csv provides a minimal header with a # (pound/hash) symbol at front and a list of the columns in order they are presented. 
 
- \set db=NAME_OF_DATABASE
+`\set db=NAME_OF_DATABASE`
 sets the name of the database to connect to on the InfluxDB instance
 
- \set host=HOSTNAME
+`\set host=HOSTNAME`
 sets the hostname where the InfluxDB instance is running
 
- \set port=PORT
+`\set port=PORT`
 sets the port number where the InfluxDB instance is running
 
- \set user=USERNAME
+`\set user=USERNAME`
 sets the username to use to connect to the InfluxDB instance.   Not stored in command history
 
- \set pass=PASSWORD
+`\set pass=PASSWORD`
 sets the password to use to connect to the InfluxDB instance.   Not stored in command history
 
 
