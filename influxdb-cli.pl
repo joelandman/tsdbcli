@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/opt/scalable/bin/perl
 
 # Copyright (c) 2002-2015 Scalable Informatics
 # License:  GPL 2.0 (see the enclosed LICENSE file)
@@ -40,7 +40,7 @@ my ($debug,$verbose,$help,$hostname,$line, @_params, $_p, $_tb,$ifdbhf);
 my (%parameters,$result,$rh,@res,$term,$version,$first,$series);
 my (@columns,$nohttp,$format,$outfile,$ofh,$kvp,$k,$v,$str,@hist);
 my ($vals,$vstr,$cmd,$url,$hash,$json,$param,$query,@usecols);
-my ($skip);
+my ($skip,$match);
 
 my ($tsdb,$hashout,$t0,$tf,$dt);
 
@@ -129,6 +129,7 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
     $skip   = false;
     last if (($line =~ /^\\exit/) || ($line =~ /^\\quit/) );
     
+    undef $match;
     
     # check for parameter setting
     if ($line =~ /^\\set\s+(.*)/) {
@@ -254,10 +255,19 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
       eval { $term->addhistory($line) if (!defined($file)); };
       next;
     }
+
+ 
     
     # do a chunked GET query, return a hash-of-hashes
     $t0     = [gettimeofday];
-    $result = $tsdb->_send_chunked_get_query_LWP_return_df({query => $line, parameters => \%parameters});
+    if ($line =~ /^\\match\s+(.*?)$/) {
+	  $match = $1;
+	  $result = $tsdb->_send_chunked_get_query_LWP_return_df({query => "list series", parameters => \%parameters});
+      }
+     else 
+      {
+          $result = $tsdb->_send_chunked_get_query_LWP_return_df({query => $line, parameters => \%parameters});
+    }
     $dt     = tv_interval ( $t0, [gettimeofday]);       
     printf STDERR "D[%i] influxdb-cli.pl; DB query \'%s\' took %-.6fs\n",$$,$line,$dt if ($debug);
 
@@ -278,7 +288,7 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
             if ($format =~ /ascii/) {
             	my $heading = sprintf "results: query = \'%s\'",$line;
                 $_tb = Text::ASCIITable->new( {headingText => $heading} );
-                if ($line =~ /list\s+series/i) {
+                if (($line =~ /list\s+series/i) || ($line =~ /^\\match/)) {
                     $_tb->setCols( 'series');
                   }
                 else
@@ -287,7 +297,7 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
                   }
                }
             elsif ($format =~/csv/) {
-              if ($line =~ /^list\s+series/i) {
+              if (($line =~ /^list\s+series/i) || ($line =~ /^\\match/)) {
                      $str = "#series\n";
                   }
                 else
@@ -302,7 +312,7 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
             
             $t0     = [gettimeofday];          
             $_c = 0;            
-            if ($line =~ /^list/i) {
+            if (($line =~ /^list/i)  || ($line =~ /^\\match/)) {
                 undef @loc;
                 foreach $c (@columns) {
                     push @loc,$_c if ($c !~ /time/);
@@ -318,15 +328,30 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
             }
               
             if ($hashout->{points}) {
-                foreach  $point (@{$hashout->{points}}) {
-                        @_row = @{$point}[@loc];
+		if (!defined($match)) {
+                 foreach  $point (@{$hashout->{points}}) {
+                        @_row = @{$point}[@loc];			
                         if ($format =~ /ascii/) {                           
                             $_tb->addRow(@{$point}[@loc]);                              
                           }
                         elsif ($format =~ /csv/) {
                             $str.= sprintf("%s\n",join($sep,@{$point}[@loc]));
                         }                        
-                }
+                 }
+		}
+		else
+		{
+		  foreach  $point (@{$hashout->{points}}) {
+                        @_row = @{$point}[@loc];
+			next if ($_row[0] !~ /$match/);
+                        if ($format =~ /ascii/) {
+                            $_tb->addRow(@{$point}[@loc]);
+                          } 
+                        elsif ($format =~ /csv/) {
+                            $str.= sprintf("%s\n",join($sep,@{$point}[@loc]));
+                        }                        
+                 } 
+		}
             }
                  
         }
