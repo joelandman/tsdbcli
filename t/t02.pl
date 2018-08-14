@@ -1,14 +1,14 @@
 #!/opt/scalable/bin/perl
 
 use lib "../lib";
-use Scalable::TSDB;
-use SI::Utils;
+use Nlytiq::TSDB;
+use Data::Utils;
 use Data::Dumper;
 
 
 my ($db,$u,$r);
 
-$db = Scalable::TSDB->new(
+$db = Nlytiq::TSDB->new(
 							{
 								host 	=> '192.168.101.250', 
 								port 	=> 8086, 
