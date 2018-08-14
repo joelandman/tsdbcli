@@ -1,4 +1,4 @@
-package Scalable::TSDB;
+package Nlytiq::TSDB;
 
 use Moose;
 use URI::Escape;
@@ -88,9 +88,9 @@ sub _generate_url {
 	#printf "from = %s\n",$1;
 
 	$query .= sprintf 'q=%s',uri_escape($dbquery);
-	printf STDERR "D[%i]  Scalable::TSDB::_generate_url; dbquery = \'%s\'\n",$$,$dbquery if ($self->debug());
+	printf STDERR "D[%i]  Nlytiq::TSDB::_generate_url; dbquery = \'%s\'\n",$$,$dbquery if ($self->debug());
 
-	printf STDERR "D[%i]  Scalable::TSDB::_generate_url; query = \'%s\'\n",$$,$query if ($self->debug());
+	printf STDERR "D[%i]  Nlytiq::TSDB::_generate_url; query = \'%s\'\n",$$,$query if ($self->debug());
 
 	# scheme
 	$scheme 	= "http";
@@ -106,7 +106,7 @@ sub _generate_url {
 					$destination,
 					$self->db(),
 					$query;
-	printf STDERR "D[%i]  Scalable::TSDB::_generate_url; url = \'%s\'\n",$$,$url if ($self->debug());
+	printf STDERR "D[%i]  Nlytiq::TSDB::_generate_url; url = \'%s\'\n",$$,$url if ($self->debug());
 
 	return $url;				
 }
@@ -196,7 +196,7 @@ sub _send_chunked_get_query_LWP_return_df {
 			$tf		= [gettimeofday];
 			$dt		= tv_interval ($t0,$tf);
 			$t0		= $tf;
-  			printf STDERR "D[%i] Scalable::TSDB::_send_chunked_get_query -> reading %-.6fs \n",$$,$dt if ($self->debug()) ;
+  			printf STDERR "D[%i] Nlytiq::TSDB::_send_chunked_get_query -> reading %-.6fs \n",$$,$dt if ($self->debug()) ;
         	
         	$bytes_received += length($chunk);
         	$output .= $chunk;
@@ -205,14 +205,14 @@ sub _send_chunked_get_query_LWP_return_df {
 
 	 
 	
-	printf STDERR "D[%i] Scalable::TSDB::_send_chunked_get_query -> bytes_received = %iB \n",$$,$bytes_received if ($self->debug()) ;
+	printf STDERR "D[%i] Nlytiq::TSDB::_send_chunked_get_query -> bytes_received = %iB \n",$$,$bytes_received if ($self->debug()) ;
         	
 
 	$rc		= $ret->code;
 	$return 	= ($rc == 200 ? { } : { 'error' => $ret->content , 'rc' => $rc });  
 	
-	printf STDERR "D[%i] Scalable::TSDB::_send_chunked_get_query return code = %i\n",$$,$rc if ($self->debug());
-	printf STDERR "D[%i] Scalable::TSDB::_send_chunked_get_query error mesg  = \'%s\'\n",$$,$ret->content
+	printf STDERR "D[%i] Nlytiq::TSDB::_send_chunked_get_query return code = %i\n",$$,$rc if ($self->debug());
+	printf STDERR "D[%i] Nlytiq::TSDB::_send_chunked_get_query error mesg  = \'%s\'\n",$$,$ret->content
 	    if ($self->debug() && $rc != 200);
 	
 	$t0		= [gettimeofday];
@@ -270,14 +270,14 @@ sub _send_chunked_get_query_LWP_return_df {
 				  
 				
 							
-				printf STDERR "D[%i] Scalable::TSDB::_send_chunked_get_query cols = \[%s\]\n",$$,join(",",@cols) if ($self->debug());
+				printf STDERR "D[%i] Nlytiq::TSDB::_send_chunked_get_query cols = \[%s\]\n",$$,join(",",@cols) if ($self->debug());
 			}	
 		}
 		$df->{points} = \@pts;
 		$return		= { rc => $rc, result => $df};	
 	  }		 
 	$dt		= tv_interval ($t0,[gettimeofday]);
-	printf STDERR "D[%i] Scalable::TSDB::_send_chunked_get_query -> mapping %-.6fs \n",$$,$dt if ($self->debug()) ;
+	printf STDERR "D[%i] Nlytiq::TSDB::_send_chunked_get_query -> mapping %-.6fs \n",$$,$dt if ($self->debug()) ;
 	return $return;
 }
 

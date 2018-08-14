@@ -1,4 +1,4 @@
-package Scalable::DataFrame;
+package Nlytiq::DataFrame;
 
 use Moose;
 use List::Utils;

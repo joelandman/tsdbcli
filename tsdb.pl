@@ -1,7 +1,7 @@
 #!/opt/scalable/bin/perl
 
-# Copyright (c) 2002-2015 Scalable Informatics
-# License:  GPL 2.0 (see the enclosed LICENSE file)
+# Copyright (c) 2002-2015 Nlytiq Informatics
+# License:  Apache 2.0 (see the enclosed LICENSE file)
 
 use strict;
 use v5.12;
@@ -10,7 +10,7 @@ use v5.12;
 use POSIX qw[strftime];
 use IO::File;
 use URI::Escape;
-use Term::ReadLine; 
+use Term::ReadLine;
 use Text::ASCIITable;
 use JSON::PP;
 use Data::Dumper;
@@ -18,7 +18,7 @@ use Getopt::Lucid qw( :all ) ;
 use FindBin;
 use lib "$FindBin::Bin/lib";
 
-use Scalable::TSDB;
+use Nlytiq::TSDB;
 use Time::HiRes qw( gettimeofday tv_interval );
 
 # from SI::Utils
@@ -46,13 +46,13 @@ my ($tsdb,$hashout,$t0,$tf,$dt);
 
 my $count   = 1;
 my $sep     = " ";
- 
+
 my @command_line_specs = (
                      Param("host"),
                      Param("port"),
                      Param("db"),
                      Param("user"),
-                     Param("pass"),                     
+                     Param("pass"),
                      Param("file"),
                      Param("spark"),
                      Switch("help"),
@@ -110,9 +110,9 @@ if ((-e history_file) && (!defined($file)) ) {
        chomp $hl ;
        #eval {
         $term->addhistory($hl);
-        #}; 
-     }        
-}    
+        #};
+     }
+}
 
 
 # loop until done
@@ -124,13 +124,13 @@ $parameters{'chunked'}        = 1;
 
 
 while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) {
-    
+
     chomp($line);
     $skip   = false;
     last if (($line =~ /^\\exit/) || ($line =~ /^\\quit/) );
-    
+
     undef $match;
-    
+
     # check for parameter setting
     if ($line =~ /^\\set\s+(.*)/) {
         $kvp    = $1;
@@ -139,7 +139,7 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
 	if (lc($k) =~ /^debug$/) {
             $debug = ( $v =~ /^true$/ ? true : false) ;
 	    $tsdb->debug($debug);
-        }        
+        }
         if (lc($k) =~ /^sep$/) {
             $sep = $v;
         }
@@ -180,7 +180,7 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
             elsif (lc($v) =~ /^gnuplot$/) {
                 $format = "gnuplot";
                }
-            else { $format = "ascii"; }            
+            else { $format = "ascii"; }
         }
         if (lc($k) =~ /^db$/) {
             $db           = $v;
@@ -204,13 +204,13 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
             $port         = $v;
             &reopen_tsdb_connection();
         }
-        
+
         if (!$skip) {
             eval {$term->addhistory($line)  if (!defined($file)); } ;
         }
         next;
     }
-    
+
     # parameter checking
     if ($line =~ /^\\get\s+(.*)/) {
         $k  = $1;
@@ -223,7 +223,7 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
         eval { $term->addhistory($line)  if (!defined($file)); } ;
         next;
     }
-    
+
     # query parameter showing
     if ($line =~ /^\\show\s+query\s+parameters{0,1}\s{0,}(.*?\,{0,1}){0,}/) {
       $_tb = Text::ASCIITable->new( {headingText => "Parameter"} );
@@ -235,20 +235,20 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
             print $ofh $str;
             $str    = "";
         }
-      foreach  $_p (sort keys %parameters) { 
+      foreach  $_p (sort keys %parameters) {
         next if ( @_params && grep(/$_p/,@_params) );
         $_tb->addRow($_p,$parameters{$_p});
         if ($format =~ /csv/) {
             $str    .= sprintf("%s,%s\n",$_p,$parameters{$_p} );
-            
-        }        
+
+        }
       }
       &output_results($format,$ofh,($format =~ /ascii/ ? $_tb : $str));
-      
+
       eval { $term->addhistory($line)  if (!defined($file)); };
       next;
     }
-    
+
     # environment parameter setting
     if ($line =~ /^\\set\s+(.*?)\s+(.*?)\=(.*?)/) {
       $parameters{$2} = $3;
@@ -256,34 +256,34 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
       next;
     }
 
- 
-    
+
+
     # do a chunked GET query, return a hash-of-hashes
     $t0     = [gettimeofday];
     if ($line =~ /^\\match\s+(.*?)$/) {
 	  $match = $1;
 	  $result = $tsdb->_send_chunked_get_query_LWP_return_df({query => "list series", parameters => \%parameters});
       }
-     else 
+     else
       {
           $result = $tsdb->_send_chunked_get_query_LWP_return_df({query => $line, parameters => \%parameters});
     }
-    $dt     = tv_interval ( $t0, [gettimeofday]);       
+    $dt     = tv_interval ( $t0, [gettimeofday]);
     printf STDERR "D[%i] influxdb-cli.pl; DB query \'%s\' took %-.6fs\n",$$,$line,$dt if ($debug);
 
     if ($result) {
         $hashout  =  $result->{result};
         # if $series is not defined, then the query has returned nothing
-        # add it to history and go to next ...    
+        # add it to history and go to next ...
         eval { $term->addhistory($line) if (!defined($file)); };
-                   
+
         if ($result->{rc} !~ /200/) {
             printf $ofh "ERROR:\n\tmessage\t= \'%s\'\n\trc\t= \'%s\'\n",$result->{error},$result->{rc};
             next;
           }
         else
           {
-            next if (!$hashout); # skip processing if the return is empty but no error message provided            
+            next if (!$hashout); # skip processing if the return is empty but no error message provided
             @columns = @{$hashout->{columns}} ;
             if ($format =~ /ascii/) {
             	my $heading = sprintf "results: query = \'%s\'",$line;
@@ -305,13 +305,13 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
                       $str = "#".join($sep,"time",@columns)."\n";
                   }
             }
-            
+
             my ($rows,@r,$lst,$id1,@cnames,$idq,@ids,@usecn,@loc,$c,$point,@_row,$_c);
-            my $i = 0;            
+            my $i = 0;
             undef @loc;
-            
-            $t0     = [gettimeofday];          
-            $_c = 0;            
+
+            $t0     = [gettimeofday];
+            $_c = 0;
             if (($line =~ /^list/i)  || ($line =~ /^\\match/)) {
                 undef @loc;
                 foreach $c (@columns) {
@@ -326,17 +326,17 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
                     $_c++;
                 }
             }
-              
+
             if ($hashout->{points}) {
 		if (!defined($match)) {
                  foreach  $point (@{$hashout->{points}}) {
-                        @_row = @{$point}[@loc];			
-                        if ($format =~ /ascii/) {                           
-                            $_tb->addRow(@{$point}[@loc]);                              
+                        @_row = @{$point}[@loc];
+                        if ($format =~ /ascii/) {
+                            $_tb->addRow(@{$point}[@loc]);
                           }
                         elsif ($format =~ /csv/) {
                             $str.= sprintf("%s\n",join($sep,@{$point}[@loc]));
-                        }                        
+                        }
                  }
 		}
 		else
@@ -346,20 +346,20 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
 			next if ($_row[0] !~ /$match/);
                         if ($format =~ /ascii/) {
                             $_tb->addRow(@{$point}[@loc]);
-                          } 
+                          }
                         elsif ($format =~ /csv/) {
                             $str.= sprintf("%s\n",join($sep,@{$point}[@loc]));
-                        }                        
-                 } 
+                        }
+                 }
 		}
             }
-                 
+
         }
-            
-        $dt     = tv_interval ( $t0, [gettimeofday]);       
+
+        $dt     = tv_interval ( $t0, [gettimeofday]);
         printf STDERR "D[%i] influxdb-cli.pl; output formatting took %-.6fs\n",$$,$dt if ($debug);
-        
-        
+
+
         $t0     = [gettimeofday];
         if ($format =~ /ascii/) {
             printf $ofh "%s\n",$_tb;
@@ -367,18 +367,18 @@ while ($line = ( defined($file) ? $fh->getline() : $term->readline($db.'> ')) ) 
         elsif ($format =~ /csv/) {
             printf $ofh "%s\n",$str;
         }
-        $dt     = tv_interval ( $t0, [gettimeofday]);       
+        $dt     = tv_interval ( $t0, [gettimeofday]);
         printf STDERR "D[%i] influxdb-cli.pl; outputting took %-.6fs\n",$$,$dt if ($debug);
-            
-          
-        
+
+
+
         eval { $term->addhistory($line) if (!defined($file)); };
         open($ifdbhf, ">>".history_file) or next;
         printf $ifdbhf "%s\n",$line;
-        close($ifdbhf); 
+        close($ifdbhf);
         next;
     }
-}    
+}
 
 
 
@@ -397,7 +397,7 @@ sub set_url {
               $h->{host},
               (defined($h->{port}) ? $h->{port} : 8086),
               $h->{db};
-  return $url;              
+  return $url;
 }
 
 
@@ -408,13 +408,13 @@ sub output_results {
 
 sub reopen_tsdb_connection {
     undef $tsdb;
-    $tsdb = Scalable::TSDB->new(
+    $tsdb = Nlytiq::TSDB->new(
         {
-          host    => $host, 
-          port    => $port, 
-          db      => $db, 
-          user    => $user, 
-          pass    => $pass, 
+          host    => $host,
+          port    => $port,
+          db      => $db,
+          user    => $user,
+          pass    => $pass,
           ssl     => false,
           debug   => $debug,
           suppress_id => false,
